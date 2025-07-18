@@ -112,6 +112,10 @@
                         <i class="fas fa-inbox mr-2"></i>Solicitações
                         <span id="solicitacoes-badge" class="hidden absolute top-2 right-[-8px] bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
                     </button>
+                    <button data-tab="compras" class="tab-button relative py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
+                        <i class="fas fa-shopping-cart mr-2"></i>Solicitações de Compra
+                        <span id="compras-badge" class="hidden absolute top-2 right-[-8px] bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                    </button>
                     <button data-tab="retiradas" class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
                         <i class="fas fa-dolly mr-2"></i>Retiradas
                     </button>
@@ -134,15 +138,15 @@
             <div id="tab-content-dashboard" class="tab-pane active">
                  <h2 class="text-2xl font-semibold text-gray-700 mb-6">Painel de Controle</h2>
                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                         <div id="pending-card" class="dashboard-card bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg shadow-md">
-                             <div class="flex justify-between items-center">
-                                 <div>
-                                     <div class="font-bold text-sm uppercase">Retiradas Pendentes</div>
-                                     <div id="pending-count" class="text-3xl font-bold">0</div>
-                                 </div>
-                                 <i class="fas fa-exclamation-triangle text-3xl opacity-50"></i>
-                             </div>
-                         </div>
+                       <div id="pending-card" class="dashboard-card bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg shadow-md">
+                           <div class="flex justify-between items-center">
+                               <div>
+                                   <div class="font-bold text-sm uppercase">Retiradas Pendentes</div>
+                                   <div id="pending-count" class="text-3xl font-bold">0</div>
+                               </div>
+                               <i class="fas fa-exclamation-triangle text-3xl opacity-50"></i>
+                           </div>
+                       </div>
                         <div id="low-stock-card" class="dashboard-card bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow-md">
                           <div class="flex justify-between items-center">
                               <div>
@@ -154,14 +158,14 @@
                         </div>
                  </div>
                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                         <div class="bg-white p-6 rounded-lg shadow-lg">
-                             <h3 class="font-bold mb-4 text-gray-700">Itens Mais Retirados</h3>
-                             <canvas id="top-items-chart"></canvas>
-                         </div>
-                          <div class="bg-white p-6 rounded-lg shadow-lg">
-                             <h3 class="font-bold mb-4 text-gray-700">Professores com Mais Retiradas</h3>
-                             <canvas id="top-professors-chart"></canvas>
-                         </div>
+                       <div class="bg-white p-6 rounded-lg shadow-lg">
+                           <h3 class="font-bold mb-4 text-gray-700">Itens Mais Retirados</h3>
+                           <canvas id="top-items-chart"></canvas>
+                       </div>
+                        <div class="bg-white p-6 rounded-lg shadow-lg">
+                           <h3 class="font-bold mb-4 text-gray-700">Professores com Mais Retiradas</h3>
+                           <canvas id="top-professors-chart"></canvas>
+                       </div>
                  </div>
             </div>
             
@@ -181,6 +185,29 @@
                             <tbody id="solicitacoes-table-body"></tbody>
                         </table>
                         <p id="solicitacoes-placeholder" class="text-center py-8 text-gray-400">Nenhuma solicitação pendente.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-content-compras" class="tab-pane hidden">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-6">Solicitações de Compra</h2>
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">Data</th>
+                                    <th class="px-4 py-3 text-left">Solicitante</th>
+                                    <th class="px-4 py-3 text-left">Item</th>
+                                    <th class="px-4 py-3 text-left">Descrição</th>
+                                    <th class="px-4 py-3 text-left">Link</th>
+                                    <th class="px-4 py-3 text-center">Status</th>
+                                    <th class="px-4 py-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="compras-table-body"></tbody>
+                        </table>
+                        <p id="compras-placeholder" class="text-center py-8 text-gray-400">Nenhuma solicitação de compra encontrada.</p>
                     </div>
                 </div>
             </div>
@@ -557,8 +584,8 @@
 
                 <div class="flex-grow mt-4 border rounded-lg flex flex-col overflow-hidden">
                     <div class="p-4 border-b flex-shrink-0">
-                         <h3 class="font-semibold text-gray-700">Adicionar Itens do Estoque</h3>
-                         <input type="text" id="modal-item-filter" placeholder="Buscar item..." class="w-full p-2 border border-gray-300 rounded-md mt-2">
+                        <h3 class="font-semibold text-gray-700">Adicionar Itens do Estoque</h3>
+                        <input type="text" id="modal-item-filter" placeholder="Buscar item..." class="w-full p-2 border border-gray-300 rounded-md mt-2">
                     </div>
                     <div id="modal-itens-accordion-container" class="p-4 space-y-3 overflow-y-auto flex-grow">
                         <!-- Accordion will be rendered here -->
@@ -624,16 +651,16 @@
         const appId = 'almoxarifado-app-global';
 
         let app, db;
-        let unsubscribeProfessores, unsubscribeItens, unsubscribeRetiradas, unsubscribeCategories, unsubscribeAuditLog, unsubscribeOperators, unsubscribeSolicitacoes;
+        let unsubscribeProfessores, unsubscribeItens, unsubscribeRetiradas, unsubscribeCategories, unsubscribeAuditLog, unsubscribeOperators, unsubscribeSolicitacoes, unsubscribePurchaseRequests;
         
-        let localProfessores = [], localItens = [], localCategories = [], allRetiradas = [], auditLog = [], localOperators = [], localSolicitacoes = [];
+        let localProfessores = [], localItens = [], localCategories = [], allRetiradas = [], auditLog = [], localOperators = [], localSolicitacoes = [], localPurchaseRequests = [];
         let currentRetirada = null;
         let currentUser = { role: 'viewer', name: 'Nenhum', permissions: {} };
         let topItemsChart, topProfessorsChart;
         let activeItemInputForQuickAdd = null;
         
         let previousPendingCount = 0;
-        const notificationSound = new Audio("data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGljZW5zZWQgRm9yIE5vbi1Db21tZXJjaWFsIFVzZSBPbmx5AAAAAA4ubW9kcGxhZwAAAAAgaHJ0RwAAAAADlTE3AAAAAAAAAAAAAAD/2loDAAAAAAABDValdwAAAAAAAAAAAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA");
+        const notificationSound = new Audio("data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGljZW5zZWQgRm9yIE5vbi1Db21tZXJjaWFsIFVzZSBPbmx5AAAAAA4ubW9kcGxhZwAAAAAgaHJ0RwAAAAADlTE3AAAAAAAAAAAAAAD/2loDAAAAAAABDValdwAAAAAAAAAAAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA");
 
         let retiradasTableBody, retiradasPlaceholder;
 
@@ -747,9 +774,10 @@
             
             document.getElementById('itens-content').style.display = canManageItems ? '' : 'none';
             document.getElementById('professores-content').style.display = canManageProfessors ? '' : 'none';
-            document.querySelector('button[data-tab="itens"]').style.display = canManageItems ? '' : 'block';
-            document.querySelector('button[data-tab="professores"]').style.display = canManageProfessors ? '' : 'block';
-            document.querySelector('button[data-tab="solicitacoes"]').style.display = canManageRetiradas ? '' : 'none';
+            document.querySelector('button[data-tab="itens"]').style.display = canManageItems ? 'block' : 'none';
+            document.querySelector('button[data-tab="professores"]').style.display = canManageProfessors ? 'block' : 'none';
+            document.querySelector('button[data-tab="solicitacoes"]').style.display = canManageRetiradas ? 'block' : 'none';
+            document.querySelector('button[data-tab="compras"]').style.display = canManageItems ? 'block' : 'none';
 
             const activeTab = document.querySelector('.tab-button.active');
             if (activeTab && activeTab.style.display === 'none') {
@@ -1092,11 +1120,11 @@
                  const itemRetiradas = allRetiradas.filter(r => r.itens.some(i => i.itemId === id));
                  let tableHtml = `<p class="text-center text-gray-500">Nenhuma retirada encontrada para este item.</p>`;
                  if (itemRetiradas.length > 0) {
-                    tableHtml = `<table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Professor</th><th class="px-6 py-3">Qtd</th><th class="px-6 py-3">Data</th><th class="px-6 py-3">Status</th></tr></thead><tbody>`;
-                       itemRetiradas.forEach(r => {
-                           r.itens.filter(i => i.itemId === id).forEach(item => { tableHtml += `<tr class="border-b"><td class="px-6 py-4">${r.professorName}</td><td class="px-6 py-4">${item.quantidade}</td><td class="px-6 py-4">${new Date(r.dataRetirada+'T00:00:00').toLocaleDateString('pt-BR')}</td><td class="px-6 py-4">${r.status}</td></tr>`; });
-                       });
-                    tableHtml += `</tbody></table>`;
+                     tableHtml = `<table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Professor</th><th class="px-6 py-3">Qtd</th><th class="px-6 py-3">Data</th><th class="px-6 py-3">Status</th></tr></thead><tbody>`;
+                        itemRetiradas.forEach(r => {
+                             r.itens.filter(i => i.itemId === id).forEach(item => { tableHtml += `<tr class="border-b"><td class="px-6 py-4">${r.professorName}</td><td class="px-6 py-4">${item.quantidade}</td><td class="px-6 py-4">${new Date(r.dataRetirada+'T00:00:00').toLocaleDateString('pt-BR')}</td><td class="px-6 py-4">${r.status}</td></tr>`; });
+                        });
+                     tableHtml += `</tbody></table>`;
                  }
                  content.innerHTML = tableHtml;
             }
@@ -1158,6 +1186,78 @@
                 tbody.appendChild(tr);
             });
         }
+
+        // =================================================================
+        // FUNÇÕES CORRIGIDAS / ADICIONADAS
+        // =================================================================
+        function updatePurchaseRequestsBadge() {
+            const badge = document.getElementById('compras-badge');
+            const pendingCount = localPurchaseRequests.filter(s => s.status !== 'Entregue' && s.status !== 'Rejeitada').length;
+            
+            if (pendingCount > 0) {
+                badge.textContent = pendingCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
+
+        function renderPurchaseRequests() {
+            const tbody = document.getElementById('compras-table-body');
+            const placeholder = document.getElementById('compras-placeholder');
+            tbody.innerHTML = '';
+
+            const activeRequests = localPurchaseRequests
+                .filter(s => s.status !== 'Entregue' && s.status !== 'Rejeitada')
+                .sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
+
+            placeholder.classList.toggle('hidden', activeRequests.length > 0);
+
+            const statusConfig = {
+                'Pendente': { text: 'Pendente', color: 'gray' },
+                'Em Análise': { text: 'Em Análise', color: 'yellow' },
+                'Comprado': { text: 'Comprado', color: 'blue' },
+                'Entregue': { text: 'Entregue', color: 'green' },
+                'Rejeitada': { text: 'Recusado', color: 'red' }
+            };
+
+            activeRequests.forEach(request => {
+                const currentStatus = request.status || 'Pendente';
+                const statusInfo = statusConfig[currentStatus] || { text: currentStatus, color: 'gray' };
+
+                const tr = document.createElement('tr');
+                tr.className = 'border-b hover:bg-gray-50';
+                
+                const linkHtml = request.link 
+                    ? `<a href="${request.link}" target="_blank" class="text-blue-500 hover:underline"><i class="fas fa-link"></i> Ver Link</a>` 
+                    : '<span>N/A</span>';
+
+                const actionsHtml = `
+                    <div class="flex items-center justify-center gap-1">
+                        <button data-id="${request.id}" data-status="Em Análise" class="status-btn bg-yellow-100 text-yellow-800 hover:bg-yellow-200 font-semibold py-1 px-2 rounded-md text-xs" title="Marcar como 'Em Análise'">Análise</button>
+                        <button data-id="${request.id}" data-status="Comprado" class="status-btn bg-blue-100 text-blue-800 hover:bg-blue-200 font-semibold py-1 px-2 rounded-md text-xs" title="Marcar como 'Comprado'">Comprado</button>
+                        <button data-id="${request.id}" data-status="Entregue" class="status-btn bg-green-100 text-green-800 hover:bg-green-200 font-semibold py-1 px-2 rounded-md text-xs" title="Marcar como 'Entregue'">Entregue</button>
+                        <button data-id="${request.id}" data-status="Rejeitada" class="status-btn bg-red-100 text-red-800 hover:bg-red-200 font-semibold py-1 px-2 rounded-md text-xs" title="Marcar como 'Recusado'">Recusado</button>
+                    </div>
+                `;
+
+                tr.innerHTML = `
+                    <td class="px-4 py-4 text-gray-600 whitespace-nowrap">${request.timestamp?.toDate().toLocaleDateString('pt-BR') || 'N/A'}</td>
+                    <td class="px-4 py-4 font-medium">${request.solicitanteName || 'N/A'}</td>
+                    <td class="px-4 py-4 font-semibold text-gray-800">${request.itemName || 'N/A'}</td>
+                    <td class="px-4 py-4 text-sm text-gray-600 max-w-xs truncate" title="${request.description || ''}">${request.description || 'N/A'}</td>
+                    <td class="px-4 py-4 text-sm">${linkHtml}</td>
+                    <td class="px-4 py-4 text-center">
+                        <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-${statusInfo.color}-100 text-${statusInfo.color}-800">${statusInfo.text}</span>
+                    </td>
+                    <td class="px-4 py-4 text-center">
+                        ${actionsHtml}
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        // =================================================================
         
         function createItemSelectionRow(item) {
             const list = document.getElementById('retirada-itens-list');
@@ -1260,6 +1360,12 @@
                 renderSolicitacoes();
                 updateSolicitacoesBadge();
             });
+            // CORREÇÃO: Apontando para a coleção correta 'solicitacoes_compra'
+            unsubscribePurchaseRequests = attach('solicitacoes_compra', data => {
+                localPurchaseRequests = data;
+                renderPurchaseRequests();
+                updatePurchaseRequestsBadge();
+            });
         }
 
         function detachListeners() {
@@ -1270,6 +1376,7 @@
             if (unsubscribeRetiradas) unsubscribeRetiradas();
             if (unsubscribeAuditLog) unsubscribeAuditLog();
             if (unsubscribeSolicitacoes) unsubscribeSolicitacoes();
+            if (unsubscribePurchaseRequests) unsubscribePurchaseRequests();
         }
         
         async function logAction(action, details) {
@@ -1447,9 +1554,10 @@
             document.getElementById('logout-btn').addEventListener('click', () => {
                 currentUser = { role: 'viewer', name: 'Nenhum', permissions: {} };
                 detachListeners();
-                localProfessores = []; localItens = []; localCategories = []; allRetiradas = []; auditLog = []; localOperators = []; localSolicitacoes = [];
-                renderProfessores([]); renderItens([]); renderCategories([]); renderRetiradas(); renderAuditLog([]); renderOperators([]); renderSolicitacoes();
+                localProfessores = []; localItens = []; localCategories = []; allRetiradas = []; auditLog = []; localOperators = []; localSolicitacoes = []; localPurchaseRequests = [];
+                renderProfessores([]); renderItens([]); renderCategories([]); renderRetiradas(); renderAuditLog([]); renderOperators([]); renderSolicitacoes(); renderPurchaseRequests();
                 updateSolicitacoesBadge();
+                updatePurchaseRequestsBadge();
                 updateUIAccess();
                 showToast('Você saiu do sistema.', 'info');
             });
@@ -1701,7 +1809,6 @@
                         const item = localItens.find(i => i.id === itemData.itemId);
                         if(item) {
                             createItemSelectionRow(item);
-                            // This part is tricky, we need to find the created row and set its quantity
                             const row = list.querySelector(`[data-item-id="${item.id}"]`);
                             if(row) row.querySelector('.item-quantity').value = itemData.quantidade;
                         }
@@ -1711,6 +1818,33 @@
                     openModal(document.getElementById('retirada-modal'));
                 }
             });
+
+            // =================================================================
+            // EVENT LISTENER ADICIONADO/MODIFICADO
+            // =================================================================
+            document.getElementById('compras-table-body').addEventListener('click', async (e) => {
+                const button = e.target.closest('button.status-btn');
+                if (!button) return;
+
+                const purchaseId = button.dataset.id;
+                const newStatus = button.dataset.status;
+                const purchaseRequest = localPurchaseRequests.find(s => s.id === purchaseId);
+                if (!purchaseRequest) return;
+
+                const message = `Deseja alterar o status do pedido para "${newStatus}"?`;
+                showConfirmModal('Confirmar Alteração de Status', message, async () => {
+                    try {
+                        // CORREÇÃO: Apontando para a coleção correta 'solicitacoes_compra'
+                        await updateDoc(getDocRef('solicitacoes_compra', purchaseId), { status: newStatus });
+                        logAction('PEDIDO_COMPRA_STATUS_ALTERADO', `Status do pedido de ${purchaseRequest.solicitanteName} alterado para ${newStatus}.`);
+                        showToast(`Status do pedido alterado para ${newStatus}.`, 'success');
+                    } catch (error) {
+                        console.error("Erro ao atualizar status do pedido:", error);
+                        showToast("Erro ao atualizar o status.", 'error');
+                    }
+                });
+            });
+            // =================================================================
 
             document.getElementById('modal-item-filter').addEventListener('input', (e) => renderItemAccordionInModal(e.target.value));
             document.getElementById('modal-itens-accordion-container').addEventListener('click', (e) => {
