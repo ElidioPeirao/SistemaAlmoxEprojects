@@ -3,146 +3,614 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solicitação de Material ao Almoxarifado</title>
-    <!-- Tailwind CSS -->
+    <title>Gerenciamento de Almoxarifado</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Font Awesome for Icons -->
+    
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
+
     <style>
+        /* Custom styles for better UX */
         body { font-family: 'Inter', sans-serif; }
-        .form-section, .tabs-container { display: none; }
-        .form-section.active, .tabs-container.active { display: block; }
-        .matricula-feedback {
-            transition: opacity 0.3s;
-        }
+        .modal { transition: opacity 0.3s ease; }
         .tab-button.active {
             border-bottom-color: #3b82f6;
             color: #3b82f6;
-            background-color: #eff6ff;
         }
+        .observation-text {
+            font-style: italic;
+            font-size: 0.75rem; /* text-xs */
+            color: #4b5563; /* text-gray-600 */
+        }
+        /* Style for disabled elements */
+        button:disabled, input:disabled, select:disabled, textarea:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            background-color: #e5e7eb !important; /* Use important to override hover styles */
+        }
+        /* Toast Notification Styles */
+        #toast-container {
+            position: fixed;
+            top: 1rem;
+            right: 1rem;
+            z-index: 9999;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+        }
+        .toast {
+            padding: 1rem;
+            border-radius: 0.5rem;
+            color: white;
+            opacity: 0;
+            transform: translateX(100%);
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.27, 1.55);
+        }
+        .toast.show {
+            opacity: 1;
+            transform: translateX(0);
+        }
+        .toast.success { background-color: #10B981; }
+        .toast.error { background-color: #EF4444; }
+        .toast.info { background-color: #3B82F6; }
+        .dashboard-card {
+            cursor: pointer;
+            transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+        }
+        .dashboard-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        /* Styles for accordion */
+        details > summary { list-style: none; cursor: pointer; }
+        details > summary::-webkit-details-marker { display: none; }
+        details > summary .chevron { transition: transform 0.2s; }
+        details[open] > summary .chevron { transform: rotate(90deg); }
     </style>
 </head>
-<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+<body class="bg-gray-100 text-gray-800">
 
-    <div class="container mx-auto max-w-4xl w-full">
-        <!-- Main Container -->
-        <div class="bg-white p-6 sm:p-8 rounded-lg shadow-lg">
-            <h1 class="text-2xl md:text-3xl font-bold mb-6 text-gray-700 text-center">
-                <i class="fas fa-paper-plane text-blue-500 mr-3"></i>Portal de Solicitação
+    <div id="toast-container"></div>
+
+    <div class="container mx-auto p-4 md:p-8">
+        
+        <header class="mb-6 text-center">
+            <h1 class="text-3xl md:text-4xl font-bold text-gray-700">
+                <i class="fas fa-warehouse mr-3 text-blue-500"></i>Gerenciamento de Almoxarifado
             </h1>
-            
-            <!-- User Identification Section -->
-            <div id="identification-section">
-                <label for="solicitante-matricula" class="block text-sm font-medium text-gray-700 mb-1">Digite sua Matrícula para Começar</label>
-                <div class="flex items-center gap-2">
-                    <div class="relative flex-grow">
-                        <input type="text" id="solicitante-matricula" class="w-full p-3 border border-gray-300 rounded-md shadow-sm" placeholder="Sua matrícula aqui..." required>
-                        <span id="matricula-feedback-icon" class="matricula-feedback absolute right-3 top-1/2 -translate-y-1/2 text-lg opacity-0"></span>
-                    </div>
-                    <button type="button" id="acessar-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-lg">Acessar</button>
-                    <button type="button" id="trocar-usuario-btn" class="hidden bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-5 rounded-lg">Trocar</button>
-                </div>
-                <div id="professor-info" class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md hidden">
-                    <span class="font-medium text-blue-800">Professor:</span>
-                    <span id="professor-name-display" class="font-bold text-blue-900"></span>
-                </div>
-                <p id="matricula-error" class="text-red-600 text-sm font-semibold mt-1 hidden">Matrícula não encontrada.</p>
+            <p class="text-gray-500 mt-2">Um sistema para controlar empréstimos e devoluções de materiais.</p>
+        </header>
+
+        <div class="flex justify-center items-center gap-4 mb-6 p-3 bg-gray-200 rounded-lg hidden" id="top-bar">
+            <div id="operator-info" class="text-sm hidden">
+                <i class="fas fa-user-shield text-gray-600"></i>
+                <span>Operador: <strong id="operator-name">Nenhum</strong></span>
+                <button id="logout-btn" class="ml-4 bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md text-xs">[Sair]</button>
             </div>
+        </div>
 
-            <!-- Tabs Navigation -->
-            <div class="tabs-container mt-8">
-                <div class="border-b border-gray-200">
-                    <nav class="flex -mb-px" aria-label="Tabs">
-                        <button data-tab="solicitacao" class="tab-button active w-1/2 text-center py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600">
-                           <i class="fas fa-edit mr-2"></i>Fazer Solicitação
-                        </button>
-                        <button data-tab="kits" class="tab-button w-1/2 text-center py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600">
-                           <i class="fas fa-box-archive mr-2"></i>Meus Kits
-                        </button>
-                    </nav>
-                </div>
-            </div>
+        <div id="logged-out-view" class="hidden text-center bg-white p-10 rounded-lg shadow-lg mt-6">
+            <i class="fas fa-lock text-6xl text-gray-300 mb-4"></i>
+            <h2 class="text-2xl font-bold text-gray-800">Acesso Restrito</h2>
+            <p class="text-gray-500 mt-2 mb-6">Por favor, faça o login como operador para gerenciar o almoxarifado.</p>
+            <button id="main-login-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                <i class="fas fa-sign-in-alt mr-2"></i>Fazer Login
+            </button>
+        </div>
 
-            <!-- Tab Content -->
-            <div id="tab-content-solicitacao" class="form-section">
-                <form id="form-solicitacao" class="mt-6">
-                     <div class="mb-4">
-                        <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="reservar-checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
-                            <span class="text-sm font-medium text-gray-700">Agendar Retirada</span>
-                        </label>
-                     </div>
-                     <div id="date-container" class="mb-6 hidden">
-                        <label for="retirada-date" class="block text-sm font-medium text-gray-700 mb-1">Data da Retirada</label>
-                        <input type="date" id="retirada-date" class="w-full p-3 border border-gray-300 rounded-md shadow-sm">
-                    </div>
-
-                    <h3 class="font-semibold text-lg mb-3 text-gray-700">Itens Desejados</h3>
-                    <div id="itens-list" class="space-y-4"></div>
-                    <button type="button" id="add-item-btn" class="mt-4 text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg">
-                        <i class="fas fa-plus mr-2"></i>Adicionar Outro Item
+        <div id="tabs-navigation" class="mb-6 border-b border-gray-200 hidden">
+            <nav class="flex flex-wrap space-x-4" aria-label="Tabs">
+                    <button data-tab="dashboard" class="tab-button active py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
+                        <i class="fas fa-chart-line mr-2"></i>Dashboard
                     </button>
-                    <div class="mt-8">
-                        <label for="observacao" class="block text-sm font-medium text-gray-700 mb-1">Observações (Opcional)</label>
-                        <textarea id="observacao" rows="3" class="w-full p-3 border border-gray-300 rounded-md shadow-sm" placeholder="Ex: Material para a aula de amanhã, sala 302..."></textarea>
-                    </div>
-                    <div class="mt-8 text-center">
-                        <button type="submit" id="submit-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105 w-full md:w-auto">
-                            <i class="fas fa-hand-paper mr-2"></i>Solicitar
-                        </button>
-                    </div>
-                </form>
+                    <button data-tab="solicitacoes" class="tab-button relative py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
+                        <i class="fas fa-inbox mr-2"></i>Solicitações
+                        <span id="solicitacoes-badge" class="hidden absolute top-2 right-[-8px] bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                    </button>
+                    <button data-tab="retiradas" class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
+                        <i class="fas fa-dolly mr-2"></i>Retiradas
+                    </button>
+                    <button data-tab="professores" class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
+                        <i class="fas fa-chalkboard-teacher mr-2"></i>Professores
+                    </button>
+                    <button data-tab="itens" class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
+                        <i class="fas fa-box-open mr-2"></i>Itens e Categorias
+                    </button>
+                    <button data-tab="history" class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
+                        <i class="fas fa-history mr-2"></i>Histórico de Alterações
+                    </button>
+                    <button id="admin-tab-btn" data-tab="admin" class="tab-button hidden py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
+                        <i class="fas fa-user-cog mr-2"></i>Admin
+                    </button>
+            </nav>
+        </div>
+
+        <main id="tabs-content" class="hidden">
+            <div id="tab-content-dashboard" class="tab-pane active">
+                 <h2 class="text-2xl font-semibold text-gray-700 mb-6">Painel de Controle</h2>
+                 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                         <div id="pending-card" class="dashboard-card bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg shadow-md">
+                             <div class="flex justify-between items-center">
+                                 <div>
+                                     <div class="font-bold text-sm uppercase">Retiradas Pendentes</div>
+                                     <div id="pending-count" class="text-3xl font-bold">0</div>
+                                 </div>
+                                 <i class="fas fa-exclamation-triangle text-3xl opacity-50"></i>
+                             </div>
+                         </div>
+                        <div id="low-stock-card" class="dashboard-card bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow-md">
+                          <div class="flex justify-between items-center">
+                              <div>
+                                  <div class="font-bold text-sm uppercase">Itens com Estoque Baixo</div>
+                                  <div id="low-stock-count" class="text-3xl font-bold">0</div>
+                              </div>
+                              <i class="fas fa-battery-quarter text-3xl opacity-50"></i>
+                          </div>
+                        </div>
+                 </div>
+                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                         <div class="bg-white p-6 rounded-lg shadow-lg">
+                             <h3 class="font-bold mb-4 text-gray-700">Itens Mais Retirados</h3>
+                             <canvas id="top-items-chart"></canvas>
+                         </div>
+                          <div class="bg-white p-6 rounded-lg shadow-lg">
+                             <h3 class="font-bold mb-4 text-gray-700">Professores com Mais Retiradas</h3>
+                             <canvas id="top-professors-chart"></canvas>
+                         </div>
+                 </div>
             </div>
             
-            <div id="tab-content-kits" class="form-section">
-                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
-                    <!-- Saved Kits -->
-                    <div>
-                        <h3 class="font-semibold text-lg mb-3 text-gray-700">Kits Salvos</h3>
-                        <div id="kits-list" class="space-y-3 max-h-96 overflow-y-auto pr-2"></div>
-                        <p id="kits-placeholder" class="text-center py-4 text-gray-500">Nenhum kit salvo.</p>
-                    </div>
-                    <!-- Create Kit -->
-                    <div>
-                        <h3 class="font-semibold text-lg mb-3 text-gray-700">Criar Novo Kit</h3>
-                        <form id="create-kit-form" class="bg-gray-50 p-4 rounded-lg">
-                             <div class="mb-4">
-                                <label for="kit-name" class="block text-sm font-medium text-gray-700 mb-1">Nome do Kit</label>
-                                <input type="text" id="kit-name" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Ex: Kit Aula de Artes" required>
-                             </div>
-                             <label class="block text-sm font-medium text-gray-700 mb-1">Itens do Kit</label>
-                             <div id="kit-itens-list" class="space-y-3"></div>
-                             <button type="button" id="add-kit-item-btn" class="mt-2 text-xs bg-gray-200 p-2 rounded"><i class="fas fa-plus mr-1"></i> Adicionar Item</button>
-                             <button type="submit" class="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg">Salvar Kit</button>
-                        </form>
+            <div id="tab-content-solicitacoes" class="tab-pane hidden">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-6">Solicitações Pendentes</h2>
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th class="px-6 py-3 text-left">Data Agendada</th>
+                                    <th class="px-6 py-3 text-left">Solicitante</th>
+                                    <th class="px-6 py-3 text-left">Itens Solicitados e Obs.</th>
+                                    <th class="px-6 py-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="solicitacoes-table-body"></tbody>
+                        </table>
+                        <p id="solicitacoes-placeholder" class="text-center py-8 text-gray-400">Nenhuma solicitação pendente.</p>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <!-- History Section -->
-        <div id="history-section" class="form-section mt-8 bg-white p-8 rounded-lg shadow-lg">
-            <h2 class="text-xl font-bold mb-4 text-gray-600">Suas Últimas 5 Solicitações</h2>
-            <div id="history-list" class="space-y-3"></div>
-            <p id="history-placeholder" class="text-center py-4 text-gray-500">Nenhuma solicitação encontrada.</p>
-        </div>
+            <div id="tab-content-retiradas" class="tab-pane hidden">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-4">Controle de Retiradas</h2>
+                
+                <details class="bg-white rounded-lg border mb-6 shadow-sm">
+                    <summary class="flex justify-between items-center p-4 font-semibold text-gray-700 hover:bg-gray-50 cursor-pointer">
+                        <span>Menu de Ações</span>
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </summary>
+                    <div class="p-4 border-t flex flex-wrap gap-4">
+                        <button id="nova-retirada-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                            <i class="fas fa-plus-circle mr-2"></i>Nova Retirada
+                        </button>
+                        <button id="gerar-pdf-btn" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg shadow-md transition-transform transform hover:scale-105">
+                            <i class="fas fa-file-pdf mr-2"></i>Gerar Relatório
+                        </button>
+                    </div>
+                </details>
+
+                 <div class="bg-white p-4 rounded-lg shadow-md mb-6 space-y-4">
+                   <p class="font-semibold text-gray-700">Filtros de Busca</p>
+                   <div class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                       <div>
+                           <label for="filter-date" class="block text-sm font-medium text-gray-600">Data da Retirada</label>
+                           <input type="date" id="filter-date" class="mt-1 p-2 w-full border border-gray-300 rounded-md">
+                       </div>
+                       <div>
+                           <label for="filter-professor" class="block text-sm font-medium text-gray-600">Nome do Professor</label>
+                           <input type="text" id="filter-professor" placeholder="Buscar por professor..." class="mt-1 p-2 w-full border border-gray-300 rounded-md">
+                       </div>
+                        <div>
+                           <label for="filter-item" class="block text-sm font-medium text-gray-600">Nome do Item</label>
+                           <input type="text" id="filter-item" placeholder="Buscar por item..." class="mt-1 p-2 w-full border border-gray-300 rounded-md">
+                       </div>
+                       <div>
+                           <button id="clear-filter-btn" class="w-full bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">
+                               <i class="fas fa-eraser mr-2"></i>Limpar Filtros
+                           </button>
+                       </div>
+                   </div>
+               </div>
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <div id="retiradas-accordion-container" class="space-y-3"></div>
+                    <p id="retiradas-placeholder" class="text-center py-8 text-gray-400 hidden">Nenhuma retirada encontrada.</p>
+                </div>
+            </div>
+
+            <div id="tab-content-professores" class="tab-pane hidden">
+                 <h2 class="text-2xl font-semibold text-gray-700 mb-6">Cadastro de Professores</h2>
+                 <div id="professores-content" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                       <div class="md:col-span-1">
+                         <div class="bg-white p-6 rounded-lg shadow-lg">
+                             <h3 class="font-bold mb-4">Adicionar Professor</h3>
+                             <form id="add-professor-form" class="space-y-4">
+                                 <input type="text" id="professor-name" placeholder="Nome do Professor" class="w-full p-2 border border-gray-300 rounded-md" required>
+                                 <input type="text" id="professor-matricula" placeholder="Matrícula" class="w-full p-2 border border-gray-300 rounded-md" required>
+                                 <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Adicionar</button>
+                             </form>
+                         </div>
+                       </div>
+                       <div class="md-col-span-2">
+                         <div class="bg-white p-6 rounded-lg shadow-lg">
+                             <h3 class="font-bold mb-4">Professores Cadastrados</h3>
+                             <ul id="professores-list" class="space-y-2"></ul>
+                              <p id="professores-placeholder" class="text-center py-8 text-gray-400">Nenhum professor cadastrado.</p>
+                         </div>
+                       </div>
+                 </div>
+            </div>
+
+            <div id="tab-content-itens" class="tab-pane hidden">
+                 <h2 class="text-2xl font-semibold text-gray-700 mb-6">Itens e Categorias</h2>
+                 <div id="itens-content" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                       <div class="lg:col-span-1">
+                         <div class="bg-white p-6 rounded-lg shadow-lg">
+                             <h3 class="font-bold mb-4">Gerenciar Categorias</h3>
+                              <form id="add-category-form" class="flex gap-2 mb-4">
+                                 <input type="text" id="category-name" placeholder="Nova Categoria" class="w-full p-2 border border-gray-300 rounded-md" required>
+                                 <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold p-2 rounded-lg"><i class="fas fa-plus"></i></button>
+                             </form>
+                             <ul id="category-list" class="space-y-2 max-h-60 overflow-y-auto"></ul>
+                             <p id="category-placeholder" class="text-center py-4 text-gray-400 text-sm">Nenhuma categoria.</p>
+                         </div>
+                       </div>
+                       <div class="lg:col-span-2">
+                         <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
+                             <h3 class="font-bold mb-4">Adicionar Novo Item</h3>
+                             <form id="add-item-form" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                 <input type="text" id="item-name" placeholder="Nome do Item" class="sm:col-span-2 p-2 border border-gray-300 rounded-md" required>
+                                 <input type="number" id="item-initial-quantity" placeholder="Estoque Inicial" class="p-2 border border-gray-300 rounded-md" required min="1">
+                                 <select id="item-category" class="sm:col-span-2 p-2 border border-gray-300 rounded-md bg-white">
+                                     <option value="">Sem Categoria</option>
+                                 </select>
+                                 <button type="submit" class="sm:col-span-1 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Adicionar Item</button>
+                             </form>
+                         </div>
+                         <div class="bg-white p-6 rounded-lg shadow-lg">
+                             <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                                 <h3 class="font-bold text-gray-700">Itens no Almoxarifado</h3>
+                                 <div class="flex gap-2 w-full sm:w-auto">
+                                     <select id="category-filter-select" class="p-2 border border-gray-300 rounded-md bg-white w-full">
+                                         <option value="">Todas as Categorias</option>
+                                     </select>
+                                     <input type="text" id="item-filter" placeholder="Buscar item..." class="p-2 border border-gray-300 rounded-md w-full">
+                                 </div>
+                             </div>
+                             <div id="itens-accordion-container" class="space-y-3"></div>
+                             <p id="itens-placeholder" class="text-center py-8 text-gray-400 hidden">Nenhum item cadastrado.</p>
+                         </div>
+                       </div>
+                 </div>
+            </div>
+
+            <div id="tab-content-history" class="tab-pane hidden">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold text-gray-700">Histórico de Alterações</h2>
+                    <button id="clear-history-btn" class="hidden bg-red-600 hover:bg-red-700 text-white font-bold py-2 px-4 rounded-lg">
+                        <i class="fas fa-eraser mr-2"></i>Limpar Histórico
+                    </button>
+                </div>
+                 <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm text-left text-gray-500">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th scope="col" class="px-6 py-3">Data</th>
+                                    <th scope="col" class="px-6 py-3">Operador</th>
+                                    <th scope="col" class="px-6 py-3">Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="audit-log-body"></tbody>
+                        </table>
+                         <p id="audit-log-placeholder" class="text-center py-8 text-gray-400">Nenhuma alteração registrada.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-content-admin" class="tab-pane hidden">
+                 <h2 class="text-2xl font-semibold text-gray-700 mb-6">Painel do Administrador</h2>
+                 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                       <div class="md:col-span-1">
+                         <div class="bg-white p-6 rounded-lg shadow-lg">
+                             <h3 class="font-bold mb-4">Adicionar Operador</h3>
+                             <form id="add-operator-form">
+                                 <div class="space-y-4">
+                                     <input type="text" id="operator-new-name" placeholder="Nome do Operador" class="w-full p-2 border border-gray-300 rounded-md" required>
+                                     <input type="text" id="operator-new-registration" placeholder="Matrícula" class="w-full p-2 border border-gray-300 rounded-md" required>
+                                     <fieldset class="mt-4 border p-3 rounded-md">
+                                         <legend class="text-sm font-semibold px-1">Permissões</legend>
+                                         <div class="space-y-2 text-sm">
+                                             <label class="flex items-center gap-2"><input type="checkbox" id="perm-manage-retiradas" class="h-4 w-4 rounded border-gray-300" checked> Gerenciar Retiradas</label>
+                                             <label class="flex items-center gap-2"><input type="checkbox" id="perm-manage-items" class="h-4 w-4 rounded border-gray-300"> Gerenciar Itens/Categorias</label>
+                                             <label class="flex items-center gap-2"><input type="checkbox" id="perm-manage-professors" class="h-4 w-4 rounded border-gray-300"> Gerenciar Professores</label>
+                                             <label class="flex items-center gap-2"><input type="checkbox" id="perm-generate-reports" class="h-4 w-4 rounded border-gray-300"> Gerar Relatórios</label>
+                                         </div>
+                                     </fieldset>
+                                 </div>
+                                 <button type="submit" class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Adicionar Operador</button>
+                             </form>
+                         </div>
+                       </div>
+                       <div class="md:col-span-2">
+                         <div class="bg-white p-6 rounded-lg shadow-lg">
+                             <h3 class="font-bold mb-4">Operadores Cadastrados</h3>
+                             <ul id="operators-list" class="space-y-2"></ul>
+                              <p id="operators-placeholder" class="text-center py-8 text-gray-400">Nenhum operador cadastrado.</p>
+                         </div>
+                       </div>
+                 </div>
+            </div>
+
+        </main>
     </div>
     
-    <!-- Success Modal -->
-    <div id="success-modal" class="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50 hidden">
-        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md text-center">
-            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-5">
-                <i class="fas fa-check text-4xl text-green-600"></i>
+    <datalist id="items-datalist"></datalist>
+    <datalist id="professores-datalist"></datalist>
+
+    <div id="details-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-3xl transform transition-all -translate-y-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="details-modal-title" class="text-2xl font-bold">Detalhes</h2>
+                <button id="close-details-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
             </div>
-            <h3 class="text-2xl font-bold text-gray-800">Operação Realizada!</h3>
-            <p id="success-message" class="my-4 text-gray-600"></p>
-            <button id="success-ok-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg">OK</button>
+            <div id="details-modal-content" class="max-h-[60vh] overflow-y-auto">
+                <!-- Content will be injected here -->
+            </div>
+        </div>
+    </div>
+    <div id="edit-professor-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-lg transform transition-all -translate-y-full">
+             <h2 class="text-2xl font-bold mb-6">Editar Professor</h2>
+             <form id="edit-professor-form">
+                 <input type="hidden" id="edit-professor-id">
+                 <div class="space-y-4">
+                     <div>
+                         <label for="edit-professor-name" class="block text-sm font-medium text-gray-700">Nome do Professor</label>
+                         <input type="text" id="edit-professor-name" class="mt-1 p-2 w-full border border-gray-300 rounded-md" required>
+                     </div>
+                     <div>
+                         <label for="edit-professor-matricula" class="block text-sm font-medium text-gray-700">Matrícula</label>
+                         <input type="text" id="edit-professor-matricula" class="mt-1 p-2 w-full border border-gray-300 rounded-md" required>
+                     </div>
+                 </div>
+                 <div class="flex justify-end gap-4 mt-8">
+                     <button type="button" id="cancel-edit-professor-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                     <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Salvar Alterações</button>
+                 </div>
+             </form>
+        </div>
+    </div>
+    <div id="quick-add-professor-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-[60]">
+        <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-sm">
+            <h3 class="text-lg font-bold mb-4">Adicionar Novo Professor</h3>
+            <form id="quick-add-professor-form" class="space-y-3">
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Nome do Professor</label>
+                    <input type="text" id="quick-professor-name" class="mt-1 p-2 w-full border border-gray-300 rounded-md bg-gray-100" disabled>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-700">Matrícula</label>
+                    <input type="text" id="quick-professor-matricula" class="mt-1 p-2 w-full border border-gray-300 rounded-md" required>
+                </div>
+                <p class="text-xs text-gray-500 mt-2">Deseja adicionar este professor e matrícula ao sistema?</p>
+                <div class="flex justify-end gap-4 pt-4">
+                    <button type="button" id="cancel-quick-add-prof-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Adicionar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="quick-add-item-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-[60]">
+        <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-sm">
+            <h3 class="text-lg font-bold mb-4">Adicionar Novo Item</h3>
+            <form id="quick-add-item-form">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700">Nome do Item</label>
+                        <input type="text" id="quick-item-name" class="mt-1 p-2 w-full border border-gray-300 rounded-md bg-gray-100" disabled>
+                    </div>
+                    <div>
+                        <label for="quick-item-quantity" class="block text-sm font-medium text-gray-700">Estoque Inicial</label>
+                        <input type="number" id="quick-item-quantity" class="mt-1 p-2 w-full border border-gray-300 rounded-md" required min="1">
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4 mt-6">
+                    <button type="button" id="cancel-quick-add-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="login-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-sm">
+            <h3 class="text-lg font-bold mb-4">Login do Operador</h3>
+            <form id="login-form">
+                <div class="space-y-4">
+                    <input type="text" id="login-name" placeholder="Nome de usuário" class="w-full p-2 border border-gray-300 rounded-md" required>
+                    <input type="password" id="login-registration" placeholder="Matrícula" class="w-full p-2 border border-gray-300 rounded-md" required>
+                </div>
+                <div class="flex justify-end gap-4 mt-6">
+                    <button type="button" id="cancel-login-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Entrar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="edit-operator-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-lg transform transition-all -translate-y-full">
+            <h2 class="text-2xl font-bold mb-6">Editar Operador</h2>
+            <form id="edit-operator-form">
+                <input type="hidden" id="edit-operator-id">
+                <div class="space-y-4">
+                    <div>
+                        <label for="edit-operator-name" class="block text-sm font-medium text-gray-700">Nome do Operador</label>
+                        <input type="text" id="edit-operator-name" class="mt-1 p-2 w-full border border-gray-300 rounded-md" required>
+                    </div>
+                    <div>
+                        <label for="edit-operator-registration" class="block text-sm font-medium text-gray-700">Matrícula</label>
+                        <input type="text" id="edit-operator-registration" class="mt-1 p-2 w-full border border-gray-300 rounded-md" required>
+                    </div>
+                    <fieldset class="mt-4 border p-3 rounded-md">
+                        <legend class="text-sm font-semibold px-1">Permissões</legend>
+                        <div class="space-y-2 text-sm">
+                            <label class="flex items-center gap-2"><input type="checkbox" id="edit-perm-manage-retiradas" class="h-4 w-4 rounded border-gray-300"> Gerenciar Retiradas</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" id="edit-perm-manage-items" class="h-4 w-4 rounded border-gray-300"> Gerenciar Itens/Categorias</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" id="edit-perm-manage-professors" class="h-4 w-4 rounded border-gray-300"> Gerenciar Professores</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" id="edit-perm-generate-reports" class="h-4 w-4 rounded border-gray-300"> Gerar Relatórios</label>
+                        </div>
+                    </fieldset>
+                </div>
+                <div class="flex justify-end gap-4 mt-8">
+                    <button type="button" id="cancel-edit-operator-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="edit-item-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-lg transform transition-all -translate-y-full">
+            <h2 class="text-2xl font-bold mb-6">Editar Item</h2>
+            <form id="edit-item-form">
+                <input type="hidden" id="edit-item-id">
+                <div class="space-y-4">
+                    <div>
+                        <label for="edit-item-name" class="block text-sm font-medium text-gray-700">Nome do Item</label>
+                        <input type="text" id="edit-item-name" class="mt-1 p-2 w-full border border-gray-300 rounded-md" required>
+                    </div>
+                     <div>
+                        <label for="edit-item-category" class="block text-sm font-medium text-gray-700">Categoria</label>
+                        <select id="edit-item-category" class="mt-1 p-2 w-full border border-gray-300 rounded-md bg-white"></select>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label for="edit-item-quantity" class="block text-sm font-medium text-gray-700">Qtd. Atual</label>
+                            <input type="number" id="edit-item-quantity" class="mt-1 p-2 w-full border border-gray-300 rounded-md" required min="0">
+                        </div>
+                        <div>
+                            <label for="edit-item-total-quantity" class="block text-sm font-medium text-gray-700">Qtd. Total (Inicial)</label>
+                            <input type="number" id="edit-item-total-quantity" class="mt-1 p-2 w-full border border-gray-300 rounded-md" required min="1">
+                        </div>
+                    </div>
+                </div>
+                <div class="flex justify-end gap-4 mt-8">
+                    <button type="button" id="cancel-edit-item-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Salvar Alterações</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="history-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-3xl transform transition-all -translate-y-full">
+            <div class="flex justify-between items-center mb-6">
+                <h2 id="history-modal-title" class="text-2xl font-bold">Histórico</h2>
+                <button id="close-history-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
+            </div>
+            <div class="max-h-[60vh] overflow-y-auto">
+                <table class="w-full text-sm text-left text-gray-500">
+                    <thead class="text-xs text-gray-700 uppercase bg-gray-50 sticky top-0">
+                        <tr id="history-table-header"></tr>
+                    </thead>
+                    <tbody id="history-table-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div id="retirada-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-3xl transform transition-all -translate-y-full max-h-[90vh] flex flex-col">
+            <h2 id="modal-title" class="text-2xl font-bold mb-6 flex-shrink-0">Nova Retirada de Material</h2>
+            <form id="retirada-form" class="flex-grow flex flex-col overflow-hidden">
+                <div class="flex-shrink-0">
+                    <input type="hidden" id="retirada-id">
+                    <input type="hidden" id="solicitacao-id-carrier">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div class="relative">
+                            <label for="retirada-professor-input" class="block text-sm font-medium text-gray-700">Professor</label>
+                            <input list="professores-datalist" id="retirada-professor-input" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm" required placeholder="Digite ou selecione um professor...">
+                            <button type="button" id="quick-add-professor-btn" class="hidden absolute right-2 bottom-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full h-6 w-6 flex items-center justify-center" title="Adicionar Novo Professor"><i class="fas fa-plus"></i></button>
+                            <input type="hidden" id="retirada-professor-id">
+                        </div>
+                        <div>
+                            <label for="retirada-date" class="block text-sm font-medium text-gray-700">Data da Retirada</label>
+                            <input type="date" id="retirada-date" class="mt-1 block w-full py-2 px-3 border border-gray-300 rounded-md shadow-sm" required>
+                        </div>
+                    </div>
+                    <h3 class="font-semibold mt-6 mb-2">Itens Selecionados</h3>
+                    <div id="retirada-itens-list" class="space-y-2 max-h-32 overflow-y-auto p-2 bg-gray-100 rounded-md border">
+                        <!-- Selected items will be populated here -->
+                    </div>
+                    <p id="retirada-itens-placeholder" class="text-sm text-center text-gray-500 py-4">Nenhum item selecionado.</p>
+                </div>
+
+                <div class="flex-grow mt-4 border rounded-lg flex flex-col overflow-hidden">
+                    <div class="p-4 border-b flex-shrink-0">
+                         <h3 class="font-semibold text-gray-700">Adicionar Itens do Estoque</h3>
+                         <input type="text" id="modal-item-filter" placeholder="Buscar item..." class="w-full p-2 border border-gray-300 rounded-md mt-2">
+                    </div>
+                    <div id="modal-itens-accordion-container" class="p-4 space-y-3 overflow-y-auto flex-grow">
+                        <!-- Accordion will be rendered here -->
+                    </div>
+                </div>
+                
+                <div class="flex justify-end gap-4 mt-8 flex-shrink-0">
+                    <button type="button" id="cancel-retirada-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Salvar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+    <div id="devolucao-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-2xl transform transition-all -translate-y-full">
+             <h2 class="text-2xl font-bold mb-6">Registrar Devolução</h2>
+             <form id="devolucao-form">
+                <input type="hidden" id="devolucao-id">
+                <p class="mb-4">Professor: <strong id="devolucao-professor-name"></strong></p>
+                <div id="devolucao-itens-list" class="space-y-4"></div>
+                <div class="mt-6">
+                    <label for="devolucao-observacao" class="block text-sm font-medium text-gray-700">Observação (para devoluções parciais)</label>
+                    <textarea id="devolucao-observacao" rows="3" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Ex: Um item foi danificado."></textarea>
+                </div>
+                <div class="flex justify-end gap-4 mt-8">
+                    <button type="button" id="cancel-devolucao-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                    <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Confirmar Devolução</button>
+                </div>
+             </form>
+        </div>
+    </div>
+    <div id="confirm-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-sm">
+            <h3 id="confirm-title" class="text-lg font-bold">Confirmar Ação</h3>
+            <p id="confirm-message" class="my-4 text-gray-600">Você tem certeza?</p>
+            <div class="flex justify-end gap-4">
+                 <button id="confirm-cancel-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                 <button id="confirm-ok-btn" class="bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-4 rounded-lg">Confirmar</button>
+            </div>
+        </div>
+    </div>
+    <div id="message-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-50">
+        <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-sm text-center">
+            <h3 id="message-title" class="text-lg font-bold text-yellow-500">Aviso</h3>
+            <p id="message-text" class="my-4 text-gray-600"></p>
+            <button id="message-ok-btn" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-6 rounded-lg">OK</button>
         </div>
     </div>
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc, writeBatch, query, where, serverTimestamp, getDocs, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyCiSA3hcGqJ4BKtkxNrS9DBrEP4NcpxAVo",
@@ -155,522 +623,1213 @@
         };
         const appId = 'almoxarifado-app-global';
 
-        const app = initializeApp(firebaseConfig);
-        const db = getFirestore(app);
-        const getCollectionRef = (name) => collection(db, 'almoxarifado', appId, name);
-
-        const itemData = new Map();
-        const professorData = new Map();
-        let allPendingSolicitacoes = [];
-        let allActiveRetiradas = [];
-
-        let currentProfessor = null;
-
-        const matriculaInput = document.getElementById('solicitante-matricula');
-        const form = document.getElementById('form-solicitacao');
+        let app, db;
+        let unsubscribeProfessores, unsubscribeItens, unsubscribeRetiradas, unsubscribeCategories, unsubscribeAuditLog, unsubscribeOperators, unsubscribeSolicitacoes;
         
-        const formContent = document.getElementById('tab-content-solicitacao');
-        const kitsContent = document.getElementById('tab-content-kits');
-        const tabsContainer = document.querySelector('.tabs-container');
-        const historySection = document.getElementById('history-section');
-        const professorInfoDiv = document.getElementById('professor-info');
-        const professorNameDisplay = document.getElementById('professor-name-display');
-        const matriculaError = document.getElementById('matricula-error');
-        const matriculaFeedbackIcon = document.getElementById('matricula-feedback-icon');
-        const acessarBtn = document.getElementById('acessar-btn');
-        const trocarUsuarioBtn = document.getElementById('trocar-usuario-btn');
-        const retiradaDateInput = document.getElementById('retirada-date');
-        const reservarCheckbox = document.getElementById('reservar-checkbox');
-        const dateContainer = document.getElementById('date-container');
-        const submitBtn = document.getElementById('submit-btn');
+        let localProfessores = [], localItens = [], localCategories = [], allRetiradas = [], auditLog = [], localOperators = [], localSolicitacoes = [];
+        let currentRetirada = null;
+        let currentUser = { role: 'viewer', name: 'Nenhum', permissions: {} };
+        let topItemsChart, topProfessorsChart;
+        let activeItemInputForQuickAdd = null;
+        
+        let previousPendingCount = 0;
+        const notificationSound = new Audio("data:audio/mp3;base64,SUQzBAAAAAABEVRYWFgAAAAtAAADY29tbWVudABCaWdTb3VuZEJhbmsuY29tIC8gTGljZW5zZWQgRm9yIE5vbi1Db21tZXJjaWFsIFVzZSBPbmx5AAAAAA4ubW9kcGxhZwAAAAAgaHJ0RwAAAAADlTE3AAAAAAAAAAAAAAD/2loDAAAAAAABDValdwAAAAAAAAAAAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA//uQyAAXkAAAAAqgAABeAAAAAFgAA/9oADhAAAAAIAAEAAAABAAAADQAAAAEAAAAHAAAAAAAAAAQAIAAAAAAAAAAAAACgAAAAA");
 
-        async function loadInitialData() {
-            professorData.clear();
-            itemData.clear();
-            
-            const profsSnapshot = await getDocs(getCollectionRef('professores'));
-            profsSnapshot.docs.forEach(doc => {
-                const prof = { id: doc.id, ...doc.data() };
-                professorData.set(prof.matricula, prof);
-            });
+        let retiradasTableBody, retiradasPlaceholder;
 
-            const itemsSnapshot = await getDocs(getCollectionRef('itens'));
-            itemsSnapshot.docs.forEach(doc => {
-                const item = { id: doc.id, ...doc.data() };
-                itemData.set(item.id, {name: item.name, totalQuantity: item.totalQuantity});
-            });
-
-            const solicitacoesSnapshot = await getDocs(query(getCollectionRef('solicitacoes'), where("status", "==", "Pendente")));
-            allPendingSolicitacoes = solicitacoesSnapshot.docs.map(doc => doc.data());
-            
-            const retiradasSnapshot = await getDocs(query(getCollectionRef('retiradas'), where("status", "in", ["Pendente", "Devolvido Parcialmente"])));
-            allActiveRetiradas = retiradasSnapshot.docs.map(doc => doc.data());
-        }
-
-        function getAvailableStockForDate(itemId, selectedDate) {
-            const totalStock = itemData.get(itemId)?.totalQuantity || 0;
-            let reservedOrOutStock = 0;
-            
-            // For today, also check items already taken out
-            if (selectedDate === new Date().toISOString().split('T')[0]) {
-                 allActiveRetiradas.forEach(retirada => {
-                    retirada.itens.forEach(item => {
-                        if (item.itemId === itemId) {
-                            reservedOrOutStock += (item.quantidade - (item.quantidadeDevolvida || 0));
-                        }
-                    });
-                });
-            }
-
-            // Always check for future reservations on the selected date
-            allPendingSolicitacoes.forEach(solicitacao => {
-                if (solicitacao.dataAgendamento === selectedDate) {
-                    solicitacao.itensSolicitados.forEach(item => {
-                        if (item.itemId === itemId) {
-                            reservedOrOutStock += item.quantidade;
-                        }
-                    });
-                }
-            });
-            
-            return totalStock - reservedOrOutStock;
+        function normalizeString(str) {
+            if (!str) return '';
+            return str
+                .toString()
+                .toLowerCase()
+                .normalize("NFD")
+                .replace(/[\u0300-\u036f]/g, "");
         }
         
-        function handleStockValidation(rowDiv) {
-            const quantityInput = rowDiv.querySelector('.item-quantity-input');
-            const errorP = rowDiv.querySelector('.error-message');
-            const selectedDate = reservarCheckbox.checked ? retiradaDateInput.value : new Date().toISOString().split('T')[0];
-            
-            const itemId = rowDiv.dataset.itemId;
-            if (!itemId) return;
-
-            const availableStock = getAvailableStockForDate(itemId, selectedDate);
-            const requestedQuantity = parseInt(quantityInput.value, 10);
-
-            if (requestedQuantity > availableStock) {
-                errorP.textContent = `Disponível: ${availableStock}`;
-                errorP.classList.remove('hidden');
-                quantityInput.classList.add('border-red-500');
-            } else {
-                errorP.classList.add('hidden');
-                quantityInput.classList.remove('border-red-500');
-            }
-        }
-        
-        function createItemRow(containerId, itemToSelect = null) {
-            const container = document.getElementById(containerId);
-            const div = document.createElement('div');
-            div.className = 'item-row flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 bg-white rounded-lg border';
-            div.innerHTML = `
-                <div class="flex-grow relative">
-                    <input type="text" class="item-search-input w-full p-2 border border-gray-300 rounded-md" placeholder="Digite para buscar um item..." required>
-                    <div class="item-dropdown absolute z-10 w-full bg-white border mt-1 rounded-md shadow-lg hidden max-h-48 overflow-y-auto"></div>
-                    <p class="error-message text-red-600 text-xs font-semibold mt-1 ml-1 hidden"></p>
-                </div>
-                <div class="flex items-center gap-2">
-                    <input type="number" class="item-quantity-input w-24 p-2 border border-gray-300 rounded-md" placeholder="Qtd" min="1" required>
-                    <button type="button" class="remove-item-btn text-red-500 hover:text-red-700 text-lg p-2" title="Remover Item">
-                        <i class="fas fa-minus-circle"></i>
-                    </button>
-                </div>
-            `;
-            container.appendChild(div);
-
-            const searchInput = div.querySelector('.item-search-input');
-            const dropdown = div.querySelector('.item-dropdown');
-            const quantityInput = div.querySelector('.item-quantity-input');
-
-            const populateAndFilterDropdown = () => {
-                const selectedDate = reservarCheckbox.checked ? retiradaDateInput.value : new Date().toISOString().split('T')[0];
-                const filterText = searchInput.value.toLowerCase();
-                dropdown.innerHTML = '';
-
-                if (reservarCheckbox.checked && !selectedDate) {
-                    dropdown.innerHTML = '<div class="p-2 text-sm text-gray-500">Selecione uma data primeiro.</div>';
-                    return;
-                }
-
-                let hasResults = false;
-                itemData.forEach((item, itemId) => {
-                    if (item.name.toLowerCase().includes(filterText)) {
-                        const availableStock = getAvailableStockForDate(itemId, selectedDate);
-                        if (availableStock > 0) {
-                            hasResults = true;
-                            const optionDiv = document.createElement('div');
-                            optionDiv.className = 'p-2 hover:bg-blue-100 cursor-pointer text-sm';
-                            optionDiv.textContent = `${item.name} (Disponível: ${availableStock})`;
-                            optionDiv.dataset.id = itemId;
-                            optionDiv.dataset.name = item.name;
-
-                            optionDiv.addEventListener('mousedown', (e) => {
-                                e.preventDefault();
-                                searchInput.value = item.name;
-                                div.dataset.itemId = itemId;
-                                div.dataset.itemName = item.name;
-                                dropdown.classList.add('hidden');
-                                handleStockValidation(div);
-                            });
-                            dropdown.appendChild(optionDiv);
-                        }
-                    }
-                });
-                if(!hasResults && filterText) dropdown.innerHTML = '<div class="p-2 text-sm text-gray-500">Nenhum item encontrado.</div>';
-            };
-
-            searchInput.addEventListener('focus', () => {
-                populateAndFilterDropdown();
-                dropdown.classList.remove('hidden');
-            });
-            searchInput.addEventListener('input', populateAndFilterDropdown);
-            searchInput.addEventListener('blur', () => setTimeout(() => dropdown.classList.add('hidden'), 200));
-            quantityInput.addEventListener('input', () => handleStockValidation(div));
-
-            if (itemToSelect) {
-                searchInput.value = itemToSelect.itemName;
-                quantityInput.value = itemToSelect.quantidade;
-                div.dataset.itemId = itemToSelect.itemId;
-                div.dataset.itemName = itemToSelect.itemName;
-            }
-        }
-        
-        async function displayHistory(professorId) {
-            const historyList = document.getElementById('history-list');
-            const historyPlaceholder = document.getElementById('history-placeholder');
-            historyList.innerHTML = '';
-            
-            const q = query(getCollectionRef('solicitacoes'), where("solicitanteId", "==", professorId));
-            const querySnapshot = await getDocs(q);
-            
-            const allSolicitacoes = querySnapshot.docs.map(doc => doc.data());
-            allSolicitacoes.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
-
-            const latestSolicitacoes = allSolicitacoes.slice(0, 5);
-            historyPlaceholder.classList.toggle('hidden', latestSolicitacoes.length > 0);
-            
-            latestSolicitacoes.forEach(solicitacao => {
-                const statusClasses = { 'Pendente': 'bg-yellow-100 text-yellow-800', 'Concluída': 'bg-green-100 text-green-800', 'Rejeitada': 'bg-red-100 text-red-800' };
-                const statusClass = statusClasses[solicitacao.status] || 'bg-gray-100 text-gray-800';
-                
-                const div = document.createElement('div');
-                div.className = 'p-3 border rounded-lg';
-                div.innerHTML = `
-                    <div class="flex justify-between items-center">
-                        <span class="font-bold text-gray-700">${new Date(solicitacao.dataAgendamento + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
-                        <span class="text-xs font-bold px-2 py-1 rounded-full ${statusClass}">${solicitacao.status}</span>
-                    </div>
-                    <div class="text-xs text-gray-600 mt-2">
-                        ${solicitacao.itensSolicitados.map(item => `<span>- ${item.quantidade}x ${item.itemName}</span>`).join('<br>')}
-                    </div>
-                `;
-                historyList.appendChild(div);
-            });
-        }
-        
-        function resetRequestForm() {
-            document.getElementById('observacao').value = '';
-            document.getElementById('itens-list').innerHTML = '';
-            createItemRow('itens-list');
-        }
-
-        function resetFullState() {
-            currentProfessor = null;
-            matriculaInput.value = '';
-            form.reset();
-            resetRequestForm();
-            tabsContainer.classList.remove('active');
-            formContent.classList.remove('active');
-            kitsContent.classList.remove('active');
-            historySection.classList.remove('active');
-            professorInfoDiv.classList.add('hidden');
-            matriculaError.classList.add('hidden');
-            matriculaFeedbackIcon.classList.add('opacity-0');
-            matriculaInput.disabled = false;
-            acessarBtn.classList.remove('hidden');
-            trocarUsuarioBtn.classList.add('hidden');
-            document.querySelector('.tab-button[data-tab="solicitacao"]').click();
-        }
-        
-        function showSuccessModal(message, callback) {
-            document.getElementById('success-message').textContent = message;
-            const modal = document.getElementById('success-modal');
+        function openModal(modal) {
             modal.classList.remove('hidden');
-            const okBtn = document.getElementById('success-ok-btn');
-            
-            const newOkBtn = okBtn.cloneNode(true);
-            okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+            setTimeout(() => {
+                const innerDiv = modal.querySelector('div[class*="transform"]');
+                if (innerDiv) innerDiv.classList.remove('-translate-y-full');
+            }, 10);
+        }
 
-            newOkBtn.addEventListener('click', () => {
-                modal.classList.add('hidden');
-                if (callback) callback();
+        function closeModal(modal) {
+            const innerDiv = modal.querySelector('div[class*="transform"]');
+            if (innerDiv) {
+                innerDiv.classList.add('-translate-y-full');
+                setTimeout(() => modal.classList.add('hidden'), 300);
+            } else {
+                 modal.classList.add('hidden');
+            }
+        }
+        
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toast-container');
+            const toast = document.createElement('div');
+            toast.className = `toast ${type}`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => toast.classList.add('show'), 10);
+            setTimeout(() => {
+                toast.classList.remove('show');
+                toast.addEventListener('transitionend', () => toast.remove());
+            }, 4000);
+        }
+        
+        function showConfirmModal(title, message, onConfirm) {
+            document.getElementById('confirm-title').textContent = title;
+            document.getElementById('confirm-message').textContent = message;
+            const confirmBtn = document.getElementById('confirm-ok-btn');
+            const newConfirmBtn = confirmBtn.cloneNode(true);
+            confirmBtn.parentNode.replaceChild(newConfirmBtn, confirmBtn);
+            newConfirmBtn.onclick = () => { onConfirm(); closeModal(document.getElementById('confirm-modal')); };
+            openModal(document.getElementById('confirm-modal'));
+        }
+        
+        function showMessageModal(title, message) {
+            document.getElementById('message-title').textContent = title;
+            document.getElementById('message-text').textContent = message;
+            openModal(document.getElementById('message-modal'));
+        }
+
+        function populateSelect(selectElement, options, placeholder, selectedValue = null) {
+            selectElement.innerHTML = `<option value="">${placeholder}</option>`;
+            options.sort((a, b) => (a.name || '').localeCompare(b.name || '')).forEach(opt => {
+                const option = document.createElement('option');
+                option.value = opt.id;
+                option.textContent = opt.name;
+                if (opt.id === selectedValue) {
+                    option.selected = true;
+                }
+                selectElement.appendChild(option);
             });
         }
         
-        async function renderKits() {
-            if (!currentProfessor) return;
-            const kitsList = document.getElementById('kits-list');
-            const kitsPlaceholder = document.getElementById('kits-placeholder');
-            kitsList.innerHTML = '';
+        function updateUIAccess() {
+            const operatorInfo = document.getElementById('operator-info');
+            const adminTabBtn = document.getElementById('admin-tab-btn');
+            const operatorNameEl = document.getElementById('operator-name');
+            const topBar = document.getElementById('top-bar');
+            const tabsNavigation = document.getElementById('tabs-navigation');
+            const tabsContent = document.getElementById('tabs-content');
+            const loggedOutView = document.getElementById('logged-out-view');
 
-            const q = query(getCollectionRef('kits'), where("professorId", "==", currentProfessor.id));
-            const querySnapshot = await getDocs(q);
+            const isAdmin = currentUser.role === 'admin';
+            const isOperator = currentUser.role === 'operator';
+            const permissions = currentUser.permissions || {};
+
+            const isLoggedIn = isAdmin || isOperator;
+
+            operatorInfo.classList.toggle('hidden', !isLoggedIn);
+            topBar.classList.toggle('hidden', !isLoggedIn);
+            operatorNameEl.textContent = currentUser.name;
+
+            tabsNavigation.classList.toggle('hidden', !isLoggedIn);
+            tabsContent.classList.toggle('hidden', !isLoggedIn);
+            loggedOutView.classList.toggle('hidden', isLoggedIn);
+
+            adminTabBtn.classList.toggle('hidden', !isAdmin);
+            document.getElementById('clear-history-btn').classList.toggle('hidden', !isAdmin);
+
+            if (!isAdmin && document.querySelector('.tab-button[data-tab="admin"].active')) {
+                document.querySelector('.tab-button[data-tab="dashboard"]').click();
+            }
+
+            const canManageRetiradas = isAdmin || permissions.canManageRetiradas;
+            const canManageItems = isAdmin || permissions.canManageItems;
+            const canManageProfessors = isAdmin || permissions.canManageProfessors;
+            const canGenerateReports = isAdmin || permissions.canGenerateReports;
             
-            kitsPlaceholder.classList.toggle('hidden', !querySnapshot.empty);
+            document.getElementById('nova-retirada-btn').disabled = !canManageRetiradas;
+            document.querySelectorAll('.edit-retirada-btn, .delete-retirada-btn, .devolucao-btn, .finalize-btn').forEach(btn => btn.style.display = canManageRetiradas ? '' : 'none');
+            document.getElementById('gerar-pdf-btn').disabled = !canGenerateReports;
             
-            querySnapshot.forEach(doc => {
-                const kit = { id: doc.id, ...doc.data() };
-                const div = document.createElement('div');
-                div.className = 'p-4 border rounded-lg bg-white';
-                div.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div>
-                            <p class="font-bold text-gray-800">${kit.kitName}</p>
-                            <div class="text-xs text-gray-500 mt-1">
-                                ${kit.items.map(i => `<span>${i.quantidade}x ${i.itemName}</span>`).join('<br>')}
+            document.getElementById('itens-content').style.display = canManageItems ? '' : 'none';
+            document.getElementById('professores-content').style.display = canManageProfessors ? '' : 'none';
+            document.querySelector('button[data-tab="itens"]').style.display = canManageItems ? '' : 'block';
+            document.querySelector('button[data-tab="professores"]').style.display = canManageProfessors ? '' : 'block';
+            document.querySelector('button[data-tab="solicitacoes"]').style.display = canManageRetiradas ? '' : 'none';
+
+            const activeTab = document.querySelector('.tab-button.active');
+            if (activeTab && activeTab.style.display === 'none') {
+                document.querySelector('.tab-button[data-tab="dashboard"]').click();
+            }
+        }
+        
+        function renderProfessores(professores) {
+            const list = document.getElementById('professores-list');
+            const placeholder = document.getElementById('professores-placeholder');
+            list.innerHTML = '';
+            placeholder.classList.toggle('hidden', professores.length > 0);
+            professores.sort((a,b) => a.name.localeCompare(b.name)).forEach(prof => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
+                li.dataset.id = prof.id;
+                li.dataset.name = prof.name;
+                li.dataset.matricula = prof.matricula;
+                li.innerHTML = `
+                    <div>
+                        <span class="font-medium">${prof.name}</span>
+                        <span class="text-sm text-gray-500 ml-2">(Matrícula: ${prof.matricula})</span>
+                    </div>
+                    <div class="actions">
+                        <button class="history-professor-btn text-blue-500 hover:text-blue-700 text-sm mr-2" title="Ver Histórico"><i class="fas fa-history"></i></button>
+                        <button class="edit-professor-btn text-blue-500 hover:text-blue-700 text-sm mr-2" title="Editar"><i class="fas fa-edit"></i></button>
+                        <button class="delete-professor-btn text-red-500 hover:text-red-700 text-sm" title="Excluir"><i class="fas fa-trash-alt"></i></button>
+                    </div>`;
+                list.appendChild(li);
+            });
+        }
+
+        function renderOperators(operators) {
+            const list = document.getElementById('operators-list');
+            const placeholder = document.getElementById('operators-placeholder');
+            list.innerHTML = '';
+            placeholder.classList.toggle('hidden', operators.length > 0);
+            operators.sort((a, b) => a.name.localeCompare(b.name)).forEach(op => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
+                const perms = op.permissions || {};
+                const permsHtml = `
+                    <i class="fas ${perms.canManageRetiradas ? 'fa-dolly text-green-500' : 'fa-dolly text-gray-300'}" title="Gerenciar Retiradas"></i>
+                    <i class="fas ${perms.canManageItems ? 'fa-box-open text-green-500' : 'fa-box-open text-gray-300'} ml-2" title="Gerenciar Itens"></i>
+                    <i class="fas ${perms.canManageProfessors ? 'fa-chalkboard-teacher text-green-500' : 'fa-chalkboard-teacher text-gray-300'} ml-2" title="Gerenciar Professores"></i>
+                    <i class="fas ${perms.canGenerateReports ? 'fa-file-pdf text-green-500' : 'fa-file-pdf text-gray-300'} ml-2" title="Gerar Relatórios"></i>
+                `;
+                li.innerHTML = `
+                    <div>
+                        <span class="font-semibold">${op.name}</span>
+                        <span class="text-sm text-gray-500 ml-2">(Matrícula: ${op.registration})</span>
+                        <div class="text-xs mt-1 flex items-center">${permsHtml}</div>
+                    </div>
+                    <div>
+                        <button data-id="${op.id}" class="edit-operator-btn text-blue-500 hover:text-blue-700 text-sm mr-4" title="Editar Operador"><i class="fas fa-edit"></i></button>
+                        <button data-id="${op.id}" class="delete-operator-btn text-red-500 hover:text-red-700 text-sm" title="Excluir Operador"><i class="fas fa-trash-alt"></i></button>
+                    </div>`;
+                list.appendChild(li);
+            });
+        }
+
+        function renderItens(itens) {
+            const datalist = document.getElementById('items-datalist');
+            datalist.innerHTML = '';
+            itens.forEach(item => {
+                if (item.quantity > 0) {
+                    const option = document.createElement('option');
+                    option.value = `${item.name} (Estoque: ${item.quantity})`;
+                    option.dataset.id = item.id;
+                    option.dataset.name = item.name;
+                    datalist.appendChild(option);
+                }
+            });
+        
+            const container = document.getElementById('itens-accordion-container');
+            const placeholder = document.getElementById('itens-placeholder');
+            const filterText = normalizeString(document.getElementById('item-filter').value.trim());
+            const categoryFilter = document.getElementById('category-filter-select').value;
+            
+            container.innerHTML = '';
+
+            let filteredItens = itens;
+            if (categoryFilter) {
+                filteredItens = filteredItens.filter(item => item.categoryId === categoryFilter);
+            }
+            if (filterText) {
+                filteredItens = filteredItens.filter(item => normalizeString(item.name).includes(filterText));
+            }
+
+            placeholder.classList.toggle('hidden', filteredItens.length > 0);
+
+            const groupedByCategory = filteredItens.reduce((acc, item) => {
+                const catId = item.categoryId || 'sem-categoria';
+                if (!acc[catId]) {
+                    acc[catId] = [];
+                }
+                acc[catId].push(item);
+                return acc;
+            }, {});
+
+            const sortedCategories = [...localCategories, {id: 'sem-categoria', name: 'Sem Categoria'}]
+                .filter(cat => groupedByCategory[cat.id])
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+            sortedCategories.forEach(category => {
+                const details = document.createElement('details');
+                details.className = 'bg-white rounded-lg border';
+                if(filterText || categoryFilter) details.open = true;
+
+                const summary = document.createElement('summary');
+                summary.className = 'flex justify-between items-center p-3 font-semibold text-gray-700 hover:bg-gray-50';
+                summary.innerHTML = `
+                    <span>${category.name} (${groupedByCategory[category.id].length})</span>
+                    <i class="fas fa-chevron-right chevron"></i>
+                `;
+
+                const itemsContainer = document.createElement('div');
+                itemsContainer.className = 'p-3 border-t space-y-2';
+
+                groupedByCategory[category.id].sort((a,b) => a.name.localeCompare(b.name)).forEach(item => {
+                    const total = item.totalQuantity || 0;
+                    let stockText = `${item.quantity} de ${total > 0 ? total : 'N/A'}`;
+                    let stockClass = 'bg-gray-100 text-gray-800';
+                    
+                    if (total > 0) {
+                        const percentage = (item.quantity / total) * 100;
+                        if (item.quantity === 0) stockClass = 'bg-red-200 text-red-800 font-bold';
+                        else if (percentage <= 20) stockClass = 'bg-red-100 text-red-800';
+                        else if (percentage <= 40) stockClass = 'bg-yellow-100 text-yellow-800';
+                        else stockClass = 'bg-green-100 text-green-800';
+                    }
+            
+                    const itemDiv = document.createElement('div');
+                    itemDiv.className = 'item-row flex flex-col sm:flex-row justify-between items-center p-2 bg-gray-50 rounded-md';
+                    itemDiv.innerHTML = `
+                        <div class="flex-grow">
+                            <span class="font-bold text-gray-800 cursor-pointer hover:text-blue-600 history-item-trigger" data-id="${item.id}" data-name="${item.name}">${item.name}</span>
+                        </div>
+                        <div class="flex items-center gap-4">
+                            <span class="px-3 py-1 rounded-full text-xs font-semibold ${stockClass}">${stockText}</span>
+                            <div class="actions space-x-1">
+                                <button class="edit-item-btn text-blue-600 hover:text-blue-800 p-2 rounded-full hover:bg-blue-100 transition-colors" title="Editar Item" data-id="${item.id}"><i class="fas fa-edit"></i></button>
+                                <button class="delete-item-btn text-red-600 hover:text-red-800 p-2 rounded-full hover:bg-red-100 transition-colors" title="Excluir" data-id="${item.id}" data-name="${item.name}"><i class="fas fa-trash-alt"></i></button>
                             </div>
                         </div>
-                        <button data-id="${kit.id}" class="delete-kit-btn text-red-400 hover:text-red-600 ml-2 text-sm"><i class="fas fa-trash"></i></button>
-                    </div>
-                    <button data-kit-items='${JSON.stringify(kit.items)}' class="use-kit-btn mt-3 w-full bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-1 px-3 rounded text-sm">Usar este Kit</button>
-                `;
-                kitsList.appendChild(div);
+                    `;
+                    itemsContainer.appendChild(itemDiv);
+                });
+
+                details.appendChild(summary);
+                details.appendChild(itemsContainer);
+                container.appendChild(details);
             });
         }
 
-        // --- Event Listeners ---
-        document.addEventListener('DOMContentLoaded', () => {
-            loadInitialData();
-            createItemRow('itens-list');
-            createItemRow('kit-itens-list');
-        });
+        function renderCategories(categories) {
+            const list = document.getElementById('category-list');
+            const placeholder = document.getElementById('category-placeholder');
+            const select = document.getElementById('item-category');
+            const filterSelect = document.getElementById('category-filter-select');
+            list.innerHTML = '';
+            select.innerHTML = '<option value="">Sem Categoria</option>';
+            filterSelect.innerHTML = '<option value="">Todas as Categorias</option>';
+            placeholder.classList.toggle('hidden', categories.length > 0);
 
-        acessarBtn.addEventListener('click', () => {
-            const matricula = matriculaInput.value.trim();
-            if (!matricula) {
-                matriculaError.textContent = 'Por favor, informe uma matrícula para acessar.';
-                matriculaError.classList.remove('hidden');
-                matriculaFeedbackIcon.className = 'matricula-feedback absolute right-3 top-1/2 -translate-y-1/2 text-lg opacity-100 fas fa-times-circle text-red-500';
+            categories.sort((a,b) => a.name.localeCompare(b.name)).forEach(cat => {
+                const li = document.createElement('li');
+                li.className = 'flex justify-between items-center p-2 bg-gray-100 rounded';
+                li.innerHTML = `<span>${cat.name}</span><button data-id="${cat.id}" data-name="${cat.name}" class="delete-category-btn text-red-500 hover:text-red-700 text-xs"><i class="fas fa-times"></i></button>`;
+                list.appendChild(li);
+
+                const option = document.createElement('option');
+                option.value = cat.id;
+                option.textContent = cat.name;
+                
+                select.appendChild(option.cloneNode(true));
+                filterSelect.appendChild(option.cloneNode(true));
+            });
+        }
+        
+        function renderRetiradas() {
+            const container = document.getElementById('retiradas-accordion-container');
+            const placeholder = document.getElementById('retiradas-placeholder');
+            
+            let filteredRetiradas;
+            const filterDate = document.getElementById('filter-date').value;
+            const filterProfessor = normalizeString(document.getElementById('filter-professor').value.trim());
+            const filterItem = normalizeString(document.getElementById('filter-item').value.trim());
+            
+            const hasActiveFilter = filterDate || filterProfessor || filterItem;
+
+            if (hasActiveFilter) {
+                filteredRetiradas = allRetiradas.filter(r => {
+                    const dateMatch = !filterDate || r.dataRetirada === filterDate;
+                    const professorMatch = !filterProfessor || normalizeString(r.professorName).includes(filterProfessor);
+                    const itemMatch = !filterItem || r.itens.some(item => normalizeString(item.itemName).includes(filterItem));
+                    return dateMatch && professorMatch && itemMatch;
+                });
+            } else {
+                const today = new Date().toISOString().slice(0, 10);
+                filteredRetiradas = allRetiradas.filter(r => {
+                    const isPending = r.status === 'Pendente' || r.status === 'Devolvido Parcialmente';
+                    const isToday = r.dataRetirada === today;
+                    return isToday || isPending;
+                });
+            }
+
+            container.innerHTML = '';
+            placeholder.classList.toggle('hidden', filteredRetiradas.length > 0);
+            
+            const groupedByDate = filteredRetiradas.reduce((acc, r) => {
+                const date = r.dataRetirada;
+                if (!acc[date]) acc[date] = [];
+                acc[date].push(r);
+                return acc;
+            }, {});
+
+            const sortedDates = Object.keys(groupedByDate).sort((a, b) => new Date(b) - new Date(a));
+            const statusOrder = { 'Pendente': 1, 'Devolvido Parcialmente': 2, 'Devolvido Totalmente': 3, 'Concluído com Pendência': 4 };
+
+            sortedDates.forEach(date => {
+                const details = document.createElement('details');
+                details.className = 'bg-gray-50 rounded-lg border';
+                details.open = true;
+
+                const formattedDate = new Date(date + 'T00:00:00').toLocaleDateString('pt-BR', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+                const withdrawalsForDate = groupedByDate[date];
+
+                const summary = document.createElement('summary');
+                summary.className = 'flex justify-between items-center p-4 font-semibold text-gray-800 hover:bg-gray-100';
+                summary.innerHTML = `
+                    <span>${formattedDate} <span class="text-gray-500 font-normal">(${withdrawalsForDate.length} retiradas)</span></span>
+                    <i class="fas fa-chevron-right chevron"></i>
+                `;
+                details.appendChild(summary);
+
+                const contentDiv = document.createElement('div');
+                contentDiv.className = 'p-4 border-t space-y-4';
+
+                withdrawalsForDate
+                    .sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99))
+                    .forEach(retirada => {
+                        const retiradaDiv = document.createElement('div');
+                        retiradaDiv.className = 'p-4 bg-white rounded-md shadow-sm border';
+                        
+                        const statusInfo = {'Pendente': { text: 'Pendente', color: 'red' }, 'Devolvido Parcialmente': { text: 'Dev. Parcial', color: 'yellow' }, 'Devolvido Totalmente': { text: 'Devolvido', color: 'green' }, 'Concluído com Pendência': { text: 'Finalizado', color: 'teal' }};
+                        const currentStatus = statusInfo[retirada.status] || { text: 'Desconhecido', color: 'gray' };
+                        const itemsHtml = retirada.itens.map(item => `<div>- ${item.quantidade}x ${item.itemName} (Dev: ${item.quantidadeDevolvida || 0})</div>`).join('');
+                        const obsHtml = retirada.observacao ? `<div class="mt-2 observation-text"><i class="fas fa-comment-dots mr-1"></i>${retirada.observacao}</div>` : '';
+                        let actionsHtml = `<button data-id="${retirada.id}" title="Editar Retirada" class="edit-retirada-btn text-blue-500 hover:text-blue-700 p-2 rounded-full hover:bg-blue-100"><i class="fas fa-edit"></i></button><button data-id="${retirada.id}" title="Excluir Retirada" class="delete-retirada-btn text-red-500 hover:text-red-700 p-2 rounded-full hover:bg-red-100"><i class="fas fa-trash-alt"></i></button>`;
+                        if (retirada.status === 'Pendente' || retirada.status === 'Devolvido Parcialmente') { actionsHtml = `<button data-id="${retirada.id}" title="Registrar Devolução" class="devolucao-btn text-green-500 hover:text-green-700 p-2 rounded-full hover:bg-green-100"><i class="fas fa-undo-alt"></i></button>` + actionsHtml; }
+                        if (retirada.status === 'Devolvido Parcialmente') { actionsHtml += `<button data-id="${retirada.id}" title="Finalizar com Pendência" class="finalize-btn text-teal-500 hover:text-teal-700 p-2 rounded-full hover:bg-teal-100"><i class="fas fa-check-double"></i></button>`; }
+
+                        retiradaDiv.innerHTML = `
+                            <div class="flex flex-col md:flex-row justify-between items-start gap-4">
+                                <div class="flex-grow">
+                                    <p class="font-bold text-gray-900">${retirada.professorName}</p>
+                                    <p class="text-xs text-gray-500">Operador: ${retirada.operator || 'N/A'}</p>
+                                    <div class="mt-2 text-xs">${itemsHtml}${obsHtml}</div>
+                                </div>
+                                <div class="flex flex-col items-end gap-2 flex-shrink-0">
+                                     <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-${currentStatus.color}-100 text-${currentStatus.color}-800">${currentStatus.text}</span>
+                                     <div class="actions space-x-1">${actionsHtml}</div>
+                                </div>
+                            </div>
+                        `;
+                        contentDiv.appendChild(retiradaDiv);
+                    });
+
+                details.appendChild(contentDiv);
+                container.appendChild(details);
+            });
+        }
+        
+        function renderAuditLog(logs) {
+            const tbody = document.getElementById('audit-log-body');
+            const placeholder = document.getElementById('audit-log-placeholder');
+            tbody.innerHTML = '';
+            placeholder.classList.toggle('hidden', logs.length > 0);
+            
+            logs.sort((a,b) => b.timestamp.toMillis() - a.timestamp.toMillis()).forEach(log => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 text-sm text-gray-500">${log.timestamp.toDate().toLocaleString('pt-BR')}</td>
+                    <td class="px-6 py-4 font-medium">${log.operator}</td>
+                    <td class="px-6 py-4">${log.details}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function updateDashboard() {
+            if (!document.getElementById('top-items-chart')) return;
+            document.getElementById('pending-count').textContent = allRetiradas.filter(r => r.status === 'Pendente' || r.status === 'Devolvido Parcialmente').length;
+            document.getElementById('low-stock-count').textContent = localItens.filter(i => {
+                const total = i.totalQuantity || 0;
+                if (total === 0) return false;
+                const percentage = (i.quantity / total) * 100;
+                return percentage <= 40;
+            }).length;
+
+            const itemCounts = {};
+            allRetiradas.forEach(r => { r.itens.forEach(i => { itemCounts[i.itemName] = (itemCounts[i.itemName] || 0) + i.quantidade; }); });
+            const sortedItems = Object.entries(itemCounts).sort(([,a],[,b]) => b-a).slice(0, 5);
+            if (topItemsChart) topItemsChart.destroy();
+            topItemsChart = new Chart(document.getElementById('top-items-chart'), {
+                type: 'bar', data: { labels: sortedItems.map(i => i[0]), datasets: [{ label: 'Quantidade Retirada', data: sortedItems.map(i => i[1]), backgroundColor: 'rgba(59, 130, 246, 0.7)' }] }, options: { indexAxis: 'y' }
+            });
+
+            const professorCounts = {};
+            allRetiradas.forEach(r => { professorCounts[r.professorName] = (professorCounts[r.professorName] || 0) + 1; });
+            const sortedProfessors = Object.entries(professorCounts).sort(([,a],[,b]) => b-a).slice(0, 5);
+            if (topProfessorsChart) topProfessorsChart.destroy();
+            topProfessorsChart = new Chart(document.getElementById('top-professors-chart'), {
+                type: 'pie', data: { labels: sortedProfessors.map(p => p[0]), datasets: [{ data: sortedProfessors.map(p => p[1]), backgroundColor: ['#3B82F6', '#10B981', '#F59E0B', '#EF4444', '#8B5CF6'] }] }
+            });
+        }
+        
+        function showHistory(type, id, name) {
+            const modal = document.getElementById('details-modal');
+            const title = document.getElementById('details-modal-title');
+            const content = document.getElementById('details-modal-content');
+            
+            if (type === 'professor') {
+                title.textContent = `Histórico de: ${name}`;
+                const professorRetiradas = allRetiradas.filter(r => r.professorId === id);
+                 let tableHtml = `<p class="text-center text-gray-500">Nenhuma retirada encontrada para este professor.</p>`;
+                if (professorRetiradas.length > 0) {
+                     tableHtml = `<table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Item</th><th class="px-6 py-3">Qtd</th><th class="px-6 py-3">Data</th><th class="px-6 py-3">Status</th></tr></thead><tbody>`;
+                     professorRetiradas.forEach(r => {
+                         r.itens.forEach(item => { tableHtml += `<tr class="border-b"><td class="px-6 py-4">${item.itemName}</td><td class="px-6 py-4">${item.quantidade}</td><td class="px-6 py-4">${new Date(r.dataRetirada+'T00:00:00').toLocaleDateString('pt-BR')}</td><td class="px-6 py-4">${r.status}</td></tr>`; });
+                    });
+                     tableHtml += `</tbody></table>`;
+                }
+                content.innerHTML = tableHtml;
+
+            } else if (type === 'item') {
+                 title.textContent = `Histórico de: ${name}`;
+                 const itemRetiradas = allRetiradas.filter(r => r.itens.some(i => i.itemId === id));
+                 let tableHtml = `<p class="text-center text-gray-500">Nenhuma retirada encontrada para este item.</p>`;
+                 if (itemRetiradas.length > 0) {
+                    tableHtml = `<table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Professor</th><th class="px-6 py-3">Qtd</th><th class="px-6 py-3">Data</th><th class="px-6 py-3">Status</th></tr></thead><tbody>`;
+                       itemRetiradas.forEach(r => {
+                           r.itens.filter(i => i.itemId === id).forEach(item => { tableHtml += `<tr class="border-b"><td class="px-6 py-4">${r.professorName}</td><td class="px-6 py-4">${item.quantidade}</td><td class="px-6 py-4">${new Date(r.dataRetirada+'T00:00:00').toLocaleDateString('pt-BR')}</td><td class="px-6 py-4">${r.status}</td></tr>`; });
+                       });
+                    tableHtml += `</tbody></table>`;
+                 }
+                 content.innerHTML = tableHtml;
+            }
+            openModal(modal);
+        }
+
+        function updateSolicitacoesBadge() {
+            const badge = document.getElementById('solicitacoes-badge');
+            const currentPendingCount = localSolicitacoes.filter(s => s.status === 'Pendente').length;
+            
+            if (currentPendingCount > 0) {
+                badge.textContent = currentPendingCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+            
+            if (currentPendingCount > previousPendingCount) {
+                notificationSound.play().catch(e => console.log("A reprodução do som foi bloqueada pelo navegador até a primeira interação do usuário."));
+                if (document.hidden) {
+                    document.title = `(${currentPendingCount}) Nova Solicitação! - Almoxarifado`;
+                }
+            }
+            previousPendingCount = currentPendingCount;
+        }
+
+        function renderSolicitacoes() {
+            const tbody = document.getElementById('solicitacoes-table-body');
+            const placeholder = document.getElementById('solicitacoes-placeholder');
+            tbody.innerHTML = '';
+            
+            const pendentes = localSolicitacoes
+                .filter(s => s.status === 'Pendente')
+                .sort((a,b) => (a.dataAgendamento || a.timestamp.toMillis()) > (b.dataAgendamento || b.timestamp.toMillis()) ? 1 : -1);
+
+            placeholder.classList.toggle('hidden', pendentes.length > 0);
+
+            pendentes.forEach(solicitacao => {
+                const itensHtml = solicitacao.itensSolicitados.map(item => 
+                    `<div>- ${item.quantidade}x ${item.itemName}</div>`
+                ).join('');
+                const obsHtml = solicitacao.observacao ? `<div class="mt-2 observation-text"><i class="fas fa-comment-dots mr-1"></i>${solicitacao.observacao}</div>` : '';
+
+                const tr = document.createElement('tr');
+                tr.className = 'border-b';
+                tr.innerHTML = `
+                    <td class="px-6 py-4 font-bold text-blue-600">${new Date(solicitacao.dataAgendamento + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                    <td class="px-6 py-4 font-medium">${solicitacao.solicitanteName}</td>
+                    <td class="px-6 py-4 text-xs">${itensHtml}${obsHtml}</td>
+                    <td class="px-6 py-4 text-center space-x-2">
+                        <button data-id="${solicitacao.id}" class="approve-btn bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-3 rounded-lg text-sm" title="Aprovar e Registrar Saída">
+                            <i class="fas fa-check mr-1"></i> Registrar Saída
+                        </button>
+                        <button data-id="${solicitacao.id}" class="reject-btn bg-red-500 hover:bg-red-600 text-white font-bold py-2 px-3 rounded-lg text-sm" title="Rejeitar Solicitação">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
+        function createItemSelectionRow(item) {
+            const list = document.getElementById('retirada-itens-list');
+            const placeholder = document.getElementById('retirada-itens-placeholder');
+            placeholder.classList.add('hidden');
+
+            const div = document.createElement('div');
+            div.className = 'flex items-center gap-2 item-selection-row p-2 bg-white border rounded';
+            div.dataset.itemId = item.id;
+            div.dataset.itemName = item.name;
+            
+            div.innerHTML = `
+                <span class="flex-grow font-medium">${item.name}</span>
+                <input type="number" class="item-quantity w-24 p-2 border border-gray-300 rounded-md" placeholder="Qtd" min="1" max="${item.quantity}" required value="1">
+                <button type="button" class="remove-item-row-btn text-red-500 hover:text-red-700 p-1"><i class="fas fa-times-circle"></i></button>
+            `;
+            list.appendChild(div);
+            return div;
+        }
+
+        function renderItemAccordionInModal(filter = '') {
+            const container = document.getElementById('modal-itens-accordion-container');
+            container.innerHTML = '';
+            const normalizedFilter = normalizeString(filter);
+
+            const availableItems = localItens.filter(i => i.quantity > 0);
+
+            let filteredItems = availableItems;
+            if (normalizedFilter) {
+                filteredItems = availableItems.filter(item => normalizeString(item.name).includes(normalizedFilter));
+            }
+
+            const groupedByCategory = filteredItems.reduce((acc, item) => {
+                const catId = item.categoryId || 'sem-categoria';
+                if (!acc[catId]) acc[catId] = [];
+                acc[catId].push(item);
+                return acc;
+            }, {});
+
+            const sortedCategories = [...localCategories, {id: 'sem-categoria', name: 'Sem Categoria'}]
+                .filter(cat => groupedByCategory[cat.id])
+                .sort((a, b) => a.name.localeCompare(b.name));
+
+            if (sortedCategories.length === 0) {
+                container.innerHTML = `<p class="text-center text-gray-500">Nenhum item encontrado.</p>`;
                 return;
             }
 
-            const professor = professorData.get(matricula);
+            sortedCategories.forEach(category => {
+                const details = document.createElement('details');
+                details.className = 'border rounded-lg';
+                if (normalizedFilter) details.open = true;
 
-            if (professor) {
-                currentProfessor = professor;
-                professorNameDisplay.textContent = professor.name;
-                professorInfoDiv.classList.remove('hidden');
-                tabsContainer.classList.add('active');
-                formContent.classList.add('active');
-                historySection.classList.add('active');
-                matriculaError.classList.add('hidden');
-                matriculaFeedbackIcon.className = 'matricula-feedback absolute right-3 top-1/2 -translate-y-1/2 text-lg opacity-100 fas fa-check-circle text-green-500';
-                
-                matriculaInput.disabled = true;
-                acessarBtn.classList.add('hidden');
-                trocarUsuarioBtn.classList.remove('hidden');
-
-                displayHistory(professor.id);
-                renderKits();
-            } else {
-                currentProfessor = null;
-                tabsContainer.classList.remove('active');
-                formContent.classList.remove('active');
-                kitsContent.classList.remove('active');
-                historySection.classList.remove('active');
-                professorInfoDiv.classList.add('hidden');
-                matriculaError.textContent = 'Matrícula não encontrada.';
-                matriculaError.classList.remove('hidden');
-                matriculaFeedbackIcon.className = 'matricula-feedback absolute right-3 top-1/2 -translate-y-1/2 text-lg opacity-100 fas fa-times-circle text-red-500';
-            }
-        });
-
-        trocarUsuarioBtn.addEventListener('click', resetFullState);
+                details.innerHTML = `
+                    <summary class="flex justify-between items-center p-3 font-semibold text-gray-700 hover:bg-gray-100 cursor-pointer">
+                        <span>${category.name}</span>
+                        <i class="fas fa-chevron-right chevron"></i>
+                    </summary>
+                    <div class="p-2 border-t grid grid-cols-1 md:grid-cols-2 gap-2">
+                        ${groupedByCategory[category.id].sort((a,b) => a.name.localeCompare(b.name)).map(item => `
+                            <button type="button" class="add-item-from-modal-btn text-left p-2 rounded-md bg-gray-50 hover:bg-blue-100 border" data-item-id="${item.id}">
+                                <span class="font-semibold text-gray-700">${item.name}</span>
+                                <span class="block text-xs text-gray-500">Disponível: ${item.quantity}</span>
+                            </button>
+                        `).join('')}
+                    </div>
+                `;
+                container.appendChild(details);
+            });
+        }
         
-        document.querySelectorAll('.tab-button').forEach(button => {
-            button.addEventListener('click', () => {
-                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-                button.classList.add('active');
+        function initialize() {
+            try {
+                app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+            } catch (error) {
+                console.error("Firebase init failed:", error);
+                document.body.innerHTML = `<div class="p-8 m-4 text-center text-red-800 bg-red-100 rounded-lg"><h2 class="font-bold text-xl mb-2">Erro na Inicialização</h2><p>Não foi possível conectar ao Firebase. Verifique a configuração e a conexão com a internet.</p><p class="mt-4 text-xs text-gray-600">Código: ${error.code}</p></div>`;
+            }
+        }
+
+        const getCollectionRef = (name) => collection(db, 'almoxarifado', appId, name);
+        const getDocRef = (coll, id) => doc(db, 'almoxarifado', appId, coll, id);
+
+        function attachListeners() {
+            if (!db) return;
+            const attach = (coll, callback) => onSnapshot(getCollectionRef(coll), snap => callback(snap.docs.map(doc => ({ id: doc.id, ...doc.data() }))), err => console.error(`Error listening to ${coll}:`, err));
+            
+            detachListeners(); 
+
+            unsubscribeOperators = attach('operators', data => { localOperators = data; if (currentUser.role === 'admin') renderOperators(data); });
+            unsubscribeProfessores = attach('professores', data => { localProfessores = data; renderProfessores(data); });
+            unsubscribeCategories = attach('categories', data => { localCategories = data; renderCategories(data); });
+            unsubscribeItens = attach('itens', data => { localItens = data; renderItens(data); updateDashboard(); });
+            unsubscribeRetiradas = attach('retiradas', data => { allRetiradas = data; renderRetiradas(); updateDashboard(); });
+            unsubscribeAuditLog = attach('audit_log', data => { auditLog = data; renderAuditLog(data); });
+            
+            unsubscribeSolicitacoes = attach('solicitacoes', data => {
+                localSolicitacoes = data;
+                renderSolicitacoes();
+                updateSolicitacoesBadge();
+            });
+        }
+
+        function detachListeners() {
+            if (unsubscribeOperators) unsubscribeOperators();
+            if (unsubscribeProfessores) unsubscribeProfessores();
+            if (unsubscribeCategories) unsubscribeCategories();
+            if (unsubscribeItens) unsubscribeItens();
+            if (unsubscribeRetiradas) unsubscribeRetiradas();
+            if (unsubscribeAuditLog) unsubscribeAuditLog();
+            if (unsubscribeSolicitacoes) unsubscribeSolicitacoes();
+        }
+        
+        async function logAction(action, details) {
+            try { await addDoc(getCollectionRef('audit_log'), { operator: currentUser.name || 'Sistema', action, details, timestamp: serverTimestamp() }); }
+            catch(e) { console.error("Error logging action:", e); }
+        }
+        
+        async function addItem(name, initialQuantity, categoryId = "") { 
+            try { 
+                const quantity = Number(initialQuantity);
+                const docRef = await addDoc(getCollectionRef('itens'), { name, quantity, totalQuantity: quantity, categoryId });
+                logAction('ITEM_CRIADO', `Item "${name}" criado com estoque de ${quantity}.`); 
+                showToast(`Item "${name}" adicionado.`, 'success');
+                return { id: docRef.id, name, quantity, totalQuantity: quantity, categoryId };
+            } catch(e) { 
+                console.error("Erro ao adicionar item:", e); 
+                showToast("Erro ao salvar o item.", 'error'); 
+                return null;
+            }
+        }
+
+        async function addProfessor(name, matricula) { 
+            try {
+                const docRef = await addDoc(getCollectionRef('professores'), { name, matricula }); 
+                logAction('PROFESSOR_CRIADO', `Professor "${name}" (Mat: ${matricula}) foi adicionado.`); 
+                showToast(`Professor "${name}" adicionado.`, 'success'); 
+                return { id: docRef.id, name, matricula };
+            } catch(e) { 
+                console.error("Erro ao adicionar professor:", e); 
+                showToast("Erro ao salvar o professor.", 'error'); 
+                return null;
+            }
+        }
+        
+        async function updateProfessor(id, data) {
+            try {
+                await updateDoc(getDocRef('professores', id), data);
+                logAction('PROFESSOR_ALTERADO', `Professor "${data.name}" (Mat: ${data.matricula}) foi atualizado.`);
+                showToast(`Professor "${data.name}" atualizado.`, 'success');
+            } catch (e) {
+                console.error("Erro ao atualizar professor:", e);
+                showToast("Erro ao atualizar o professor.", 'error');
+            }
+        }
+
+        async function addOperator(name, registration, permissions) { try { await addDoc(getCollectionRef('operators'), { name, registration, permissions }); logAction('OPERADOR_CRIADO', `Operador "${name}" foi adicionado.`); showToast(`Operador "${name}" adicionado.`, 'success'); } catch(e) { console.error("Erro ao adicionar operador:", e); showToast("Erro ao salvar o operador.", 'error'); }}
+        async function updateOperator(id, data) { try { await updateDoc(getDocRef('operators', id), data); logAction('OPERADOR_ALTERADO', `Operador "${data.name}" foi atualizado.`); showToast(`Operador "${data.name}" atualizado.`, 'success'); } catch (e) { console.error("Erro ao atualizar operador:", e); showToast("Erro ao atualizar o operador.", 'error'); } }
+        async function updateItem(id, newData) { try { await updateDoc(getDocRef('itens', id), newData); logAction('ITEM_ALTERADO', `Item "${newData.name}" atualizado.`); showToast(`Item "${newData.name}" atualizado.`, 'success'); } catch (e) { console.error("Erro ao atualizar item:", e); showToast("Erro ao atualizar o item.", 'error'); } }
+        async function addCategory(name) { try { await addDoc(getCollectionRef('categories'), { name }); logAction('CATEGORIA_CRIADA', `Categoria "${name}" criada.`); showToast(`Categoria "${name}" criada.`, 'success'); } catch(e) { console.error("Erro ao adicionar categoria:", e); showToast("Erro ao salvar a categoria.", 'error'); }}
+        async function deleteProfessor(id, name) { if (allRetiradas.some(r => r.professorId === id)) { showMessageModal('Ação Bloqueada', `"${name}" não pode ser excluído pois possui retiradas no histórico.`); return; } showConfirmModal('Excluir Professor', `Excluir "${name}"?`, async () => { try { await deleteDoc(getDocRef('professores', id)); logAction('PROFESSOR_EXCLUIDO', `Professor "${name}" foi excluído.`); showToast(`Professor "${name}" excluído.`, 'success'); } catch (e) { console.error("Erro ao excluir professor:", e); showToast("Erro ao excluir.", 'error'); } }); }
+        async function deleteItem(id, name) { if (allRetiradas.some(r => r.itens.some(i => i.itemId === id) && r.status !== 'Devolvido Totalmente' && r.status !== 'Concluído com Pendência')) { showMessageModal('Ação Bloqueada', `"${name}" não pode ser excluído pois está em uma retirada ativa.`); return; } showConfirmModal('Excluir Item', `Excluir "${name}"?`, async () => { try { await deleteDoc(getDocRef('itens', id)); logAction('ITEM_EXCLUIDO', `Item "${name}" foi excluído.`); showToast(`Item "${name}" excluído.`, 'success'); } catch(e) { console.error("Erro ao excluir item:", e); showToast("Erro ao excluir.", 'error'); } }); }
+        async function deleteCategory(id, name) { showConfirmModal('Excluir Categoria', `Excluir "${name}"?`, async () => { try { await deleteDoc(getDocRef('categories', id)); logAction('CATEGORIA_EXCLUIDA', `Categoria "${name}" excluída.`); showToast(`Categoria excluída.`, 'success'); } catch(e) { console.error("Erro ao excluir categoria:", e); showToast("Erro ao excluir.", 'error'); } }); }
+        async function deleteOperator(id, name) { showConfirmModal('Excluir Operador', `Excluir "${name}"?`, async () => { try { await deleteDoc(getDocRef('operators', id)); logAction('OPERADOR_EXCLUIDO', `Operador "${name}" foi excluído.`); showToast(`Operador excluído.`, 'success'); } catch(e) { console.error("Erro ao excluir operador:", e); showToast("Erro ao excluir.", 'error'); } }); }
+        async function finalizeRetirada(id) { try { await updateDoc(getDocRef('retiradas', id), { status: 'Concluído com Pendência' }); logAction('RETIRADA_FINALIZADA', `Retirada ID ${id.substring(0,5)}... finalizada.`); showToast(`Retirada finalizada.`, 'success'); } catch(e) { console.error("Erro ao finalizar retirada:", e); showToast("Erro ao finalizar.", 'error'); }}
+        async function clearAuditLog() { showConfirmModal('Limpar Histórico?', 'Esta ação é irreversível e apagará todos os registros de auditoria.', async () => { try { const logSnaps = await getDocs(getCollectionRef('audit_log')); const batch = writeBatch(db); logSnaps.forEach(doc => batch.delete(doc.ref)); await batch.commit(); logAction('HISTORICO_APAGADO', 'Todo o histórico de alterações foi apagado.'); showToast('Histórico de alterações apagado.', 'success'); } catch (e) { console.error("Erro ao limpar histórico:", e); showToast("Erro ao limpar histórico.", 'error'); } });}
+        
+        async function saveRetirada(data) {
+            try {
+                const batch = writeBatch(db);
+                for (const item of data.itens) {
+                    const stockItem = localItens.find(i => i.id === item.itemId);
+                    const originalRetiradaQty = (data.id && currentRetirada) ? (currentRetirada.itens.find(i => i.itemId === item.itemId)?.quantidade || 0) : 0;
+                    const availableStock = (stockItem ? stockItem.quantity : 0) + originalRetiradaQty;
+                    if (item.quantidade > availableStock) { showMessageModal('Estoque Insuficiente', `Não há ${item.quantidade} de "${item.itemName}". Disponível: ${availableStock}.`); return false; }
+                }
+                const actionType = data.id ? 'RETIRADA_ALTERADA' : 'RETIRADA_CRIADA';
+                const logDetails = data.id ? `Retirada para "${data.professorName}" alterada.` : `Nova retirada para "${data.professorName}".`;
+
+                if (data.id) { if(currentRetirada) { for (const oldItem of currentRetirada.itens) { const itemRef = getDocRef('itens', oldItem.itemId); const stockItem = localItens.find(i => i.id === oldItem.itemId); if(stockItem) batch.update(itemRef, { quantity: stockItem.quantity + oldItem.quantidade }); } } batch.update(getDocRef('retiradas', data.id), data); } 
+                else { data.operator = currentUser.name; const newRetiradaRef = doc(getCollectionRef('retiradas')); data.id = newRetiradaRef.id; batch.set(newRetiradaRef, data); }
+                for (const item of data.itens) {
+                    const itemRef = getDocRef('itens', item.itemId);
+                    const stockItem = localItens.find(i => i.id === item.itemId);
+                    const originalRetiradaQty = (data.id && currentRetirada) ? (currentRetirada.itens.find(i => i.itemId === item.itemId)?.quantidade || 0) : 0;
+                    const newStock = (stockItem ? stockItem.quantity : 0) + originalRetiradaQty - item.quantidade;
+                    batch.update(itemRef, { quantity: newStock });
+                }
+                await batch.commit(); 
+                logAction(actionType, logDetails);
+                showToast(data.id ? 'Retirada atualizada!' : 'Retirada criada!', 'success');
+                currentRetirada = null; return true;
+            } catch (e) { console.error("Save retirada error:", e); showToast("Erro ao salvar a retirada.", 'error'); return false; }
+        }
+
+        async function deleteRetirada(id) {
+            const retiradaData = allRetiradas.find(r => r.id === id); if (!retiradaData) return;
+            showConfirmModal('Excluir Retirada', 'Deseja excluir? Os itens pendentes voltarão ao estoque.', async () => {
+                try {
+                    const batch = writeBatch(db);
+                    const retiradaRef = getDocRef('retiradas', id);
+                    for (const retiradaItem of retiradaData.itens) {
+                        const stockItem = localItens.find(i => i.id === retiradaItem.itemId);
+                        if(stockItem) { const itemRef = getDocRef('itens', retiradaItem.itemId); const returnedQty = retiradaItem.quantidade - (retiradaItem.quantidadeDevolvida || 0); if (returnedQty > 0) { batch.update(itemRef, { quantity: stockItem.quantity + returnedQty }); } }
+                    }
+                    batch.delete(retiradaRef); await batch.commit();
+                    logAction('RETIRADA_EXCLUIDA', `Retirada de "${retiradaData.professorName}" foi excluída.`);
+                    showToast('Retirada excluída com sucesso.', 'success');
+                } catch (e) { console.error("Erro ao excluir retirada:", e); showToast('Erro ao excluir retirada.', 'error'); }
+            });
+        }
+        
+        async function saveDevolucao(data) {
+            try {
+                const batch = writeBatch(db);
+                const retiradaRef = getDocRef('retiradas', data.id);
+                let totalRetirado = 0, totalDevolvidoAcumulado = 0;
+                const updatedItens = currentRetirada.itens.map(retiradaItem => {
+                    const devItem = data.itensDevolvidos.find(d => d.itemId === retiradaItem.itemId);
+                    const qtyDevolvidaAgora = devItem ? Number(devItem.quantidade) : 0;
+                    
+                    if (qtyDevolvidaAgora > 0) {
+                        const itemRef = getDocRef('itens', retiradaItem.itemId);
+                        batch.update(itemRef, { quantity: increment(qtyDevolvidaAgora) });
+                    }
+
+                    const novaQtdDevolvida = (retiradaItem.quantidadeDevolvida || 0) + qtyDevolvidaAgora;
+                    totalRetirado += retiradaItem.quantidade; totalDevolvidoAcumulado += novaQtdDevolvida;
+                    return { ...retiradaItem, quantidadeDevolvida: novaQtdDevolvida };
+                });
+                const status = totalDevolvidoAcumulado >= totalRetirado ? 'Devolvido Totalmente' : 'Devolvido Parcialmente';
+                batch.update(retiradaRef, { itens: updatedItens, status, observacao: data.observacao, dataDevolucao: new Date().toISOString() });
+                await batch.commit(); 
+                logAction('DEVOLUCAO_REGISTRADA', `Devolução registrada para "${currentRetirada.professorName}".`);
+                showToast('Devolução registrada!', 'success');
+                currentRetirada = null;
+            } catch(e) { console.error("Erro ao salvar devolução:", e); showToast('Erro ao salvar devolução.', 'error'); }
+        }
+
+        function generatePDF() {
+            const { jsPDF } = window.jspdf;
+            const docPdf = new jsPDF();
+            docPdf.setFontSize(18); docPdf.text("Relatório de Movimentações", 14, 22);
+            docPdf.setFontSize(11); docPdf.setTextColor(100); docPdf.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 29);
+            const tableData = [];
+            
+            document.querySelectorAll('#retiradas-accordion-container .p-4.bg-white').forEach(row => {
+                const professorName = row.querySelector('.font-bold.text-gray-900').textContent;
+                const operatorName = row.querySelector('.text-xs.text-gray-500').textContent.replace('Operador: ', '');
+                const itemsText = Array.from(row.querySelectorAll('.mt-2.text-xs > div')).map(d => d.textContent).join('\n');
+                const obs = row.querySelector('.observation-text')?.textContent || '';
+                const status = row.querySelector('.px-2.inline-flex').textContent.trim();
                 
-                const tab = button.dataset.tab;
-                document.querySelectorAll('.form-section').forEach(sec => sec.classList.remove('active'));
-                document.getElementById(`tab-content-${tab}`).classList.add('active');
+                const dateString = row.closest('details').querySelector('summary span').textContent.split('(')[0].trim();
+
+                tableData.push([professorName, itemsText, dateString, operatorName, status, obs]);
+            });
+
+            docPdf.autoTable({ startY: 35, head: [['Professor', 'Itens', 'Data', 'Operador', 'Status', 'Observação']], body: tableData, theme: 'striped', headStyles: { fillColor: [41, 128, 185] }, styles: { cellPadding: 2, fontSize: 8 }});
+            docPdf.save(`relatorio_almoxarifado_${new Date().toISOString().slice(0,10)}.pdf`);
+        }
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            retiradasPlaceholder = document.getElementById('retiradas-placeholder');
+
+            initialize();
+            updateUIAccess();
+
+            document.addEventListener('visibilitychange', () => {
+                if (!document.hidden) {
+                    document.title = 'Gerenciamento de Almoxarifado';
+                }
+            });
+            
+            document.getElementById('main-login-btn').addEventListener('click', () => {
+                onSnapshot(getCollectionRef('operators'), snap => {
+                    localOperators = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    openModal(document.getElementById('login-modal'));
+                }, err => {
+                    console.error("Could not fetch operators for login:", err);
+                    showToast("Erro ao carregar dados de login.", "error");
+                });
+            });
+            
+            document.getElementById('cancel-login-btn').addEventListener('click', () => closeModal(document.getElementById('login-modal')));
+            document.getElementById('logout-btn').addEventListener('click', () => {
+                currentUser = { role: 'viewer', name: 'Nenhum', permissions: {} };
+                detachListeners();
+                localProfessores = []; localItens = []; localCategories = []; allRetiradas = []; auditLog = []; localOperators = []; localSolicitacoes = [];
+                renderProfessores([]); renderItens([]); renderCategories([]); renderRetiradas(); renderAuditLog([]); renderOperators([]); renderSolicitacoes();
+                updateSolicitacoesBadge();
+                updateUIAccess();
+                showToast('Você saiu do sistema.', 'info');
+            });
+            document.getElementById('login-form').addEventListener('submit', (e) => {
+                e.preventDefault();
+                const name = document.getElementById('login-name').value.trim();
+                const registration = document.getElementById('login-registration').value.trim();
+                
+                if (name === 'admin' && registration === 'admin') {
+                    currentUser = { role: 'admin', name: 'Admin', permissions: { canManageItems: true, canManageProfessors: true, canGenerateReports: true, canManageRetiradas: true } };
+                    showToast('Bem-vindo, Administrador!', 'success');
+                } else {
+                    const operator = localOperators.find(op => op.name === name && op.registration === registration);
+                    if (operator) {
+                        currentUser = { role: 'operator', name: operator.name, permissions: operator.permissions || {} };
+                        showToast(`Bem-vindo, ${operator.name}!`, 'success');
+                    } else {
+                        showToast('Nome de usuário ou matrícula inválidos.', 'error');
+                        return;
+                    }
+                }
+                attachListeners();
+                updateUIAccess();
+                closeModal(document.getElementById('login-modal'));
+                document.getElementById('login-form').reset();
+            });
+
+            const tabs = document.querySelectorAll('.tab-button');
+            const tabPanes = document.querySelectorAll('.tab-pane');
+            tabs.forEach(tab => tab.addEventListener('click', () => { tabs.forEach(t => t.classList.remove('active')); tab.classList.add('active'); tabPanes.forEach(pane => pane.classList.toggle('hidden', pane.id !== `tab-content-${tab.dataset.tab}`)); if (tab.dataset.tab === 'dashboard') updateDashboard(); }));
+
+            document.getElementById('add-professor-form').addEventListener('submit', (e) => { e.preventDefault(); const nameInput = document.getElementById('professor-name'); const matriculaInput = document.getElementById('professor-matricula'); if(nameInput.value.trim() && matriculaInput.value.trim()){ addProfessor(nameInput.value.trim(), matriculaInput.value.trim()); e.target.reset(); } });
+            document.getElementById('add-item-form').addEventListener('submit', (e) => { e.preventDefault(); const n = document.getElementById('item-name'), q = document.getElementById('item-initial-quantity'), c = document.getElementById('item-category'); if(n.value.trim()&&q.value){ addItem(n.value.trim(), q.value, c.value); n.value=q.value=''; c.value=''; } });
+            document.getElementById('add-category-form').addEventListener('submit', (e) => { e.preventDefault(); const i = document.getElementById('category-name'); if(i.value.trim()){ addCategory(i.value.trim()); i.value=''; } });
+            document.getElementById('add-operator-form').addEventListener('submit', (e) => { e.preventDefault(); const n = document.getElementById('operator-new-name'); const r = document.getElementById('operator-new-registration'); const perms = { canManageRetiradas: document.getElementById('perm-manage-retiradas').checked, canManageItems: document.getElementById('perm-manage-items').checked, canManageProfessors: document.getElementById('perm-manage-professors').checked, canGenerateReports: document.getElementById('perm-generate-reports').checked }; if (n.value.trim() && r.value.trim()) { addOperator(n.value.trim(), r.value.trim(), perms); e.target.reset(); } });
+            document.getElementById('edit-operator-form').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('edit-operator-id').value; const data = { name: document.getElementById('edit-operator-name').value.trim(), registration: document.getElementById('edit-operator-registration').value.trim(), permissions: { canManageRetiradas: document.getElementById('edit-perm-manage-retiradas').checked, canManageItems: document.getElementById('edit-perm-manage-items').checked, canManageProfessors: document.getElementById('edit-perm-manage-professors').checked, canGenerateReports: document.getElementById('edit-perm-generate-reports').checked } }; await updateOperator(id, data); closeModal(document.getElementById('edit-operator-modal')); });
+            document.getElementById('edit-item-form').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('edit-item-id').value; const newData = { name: document.getElementById('edit-item-name').value, categoryId: document.getElementById('edit-item-category').value, quantity: Number(document.getElementById('edit-item-quantity').value), totalQuantity: Number(document.getElementById('edit-item-total-quantity').value) }; if(newData.quantity > newData.totalQuantity) { showMessageModal('Erro', 'A qtd. atual não pode ser maior que a total.'); return; } await updateItem(id, newData); closeModal(document.getElementById('edit-item-modal')); });
+            document.getElementById('edit-professor-form').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('edit-professor-id').value; const data = { name: document.getElementById('edit-professor-name').value.trim(), matricula: document.getElementById('edit-professor-matricula').value.trim() }; await updateProfessor(id, data); closeModal(document.getElementById('edit-professor-modal')); });
+
+            document.getElementById('professores-list').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); if (!li) return; const id = li.dataset.id; const name = li.dataset.name; const matricula = li.dataset.matricula; const btn = e.target.closest('button'); if (!btn) return; if (btn.classList.contains('delete-professor-btn')) { deleteProfessor(id, name); } else if (btn.classList.contains('history-professor-btn')) { showHistory('professor', id, name); } else if (btn.classList.contains('edit-professor-btn')) { document.getElementById('edit-professor-id').value = id; document.getElementById('edit-professor-name').value = name; document.getElementById('edit-professor-matricula').value = matricula; openModal(document.getElementById('edit-professor-modal')); } });
+            document.getElementById('operators-list').addEventListener('click', (e) => { const btn = e.target.closest('button'); if (!btn) return; const id = btn.dataset.id; const operator = localOperators.find(op => op.id === id); if (btn.classList.contains('delete-operator-btn')) { deleteOperator(id, operator.name); } if (btn.classList.contains('edit-operator-btn')) { document.getElementById('edit-operator-id').value = id; document.getElementById('edit-operator-name').value = operator.name; document.getElementById('edit-operator-registration').value = operator.registration; const perms = operator.permissions || {}; document.getElementById('edit-perm-manage-retiradas').checked = !!perms.canManageRetiradas; document.getElementById('edit-perm-manage-items').checked = !!perms.canManageItems; document.getElementById('edit-perm-manage-professors').checked = !!perms.canManageProfessors; document.getElementById('edit-perm-generate-reports').checked = !!perms.canGenerateReports; openModal(document.getElementById('edit-operator-modal')); }});
+            
+            document.getElementById('itens-accordion-container').addEventListener('click', (e) => { 
+                const trigger = e.target.closest('button, .history-item-trigger'); 
+                if (!trigger) return; 
+                const id = trigger.dataset.id; 
+                const name = trigger.dataset.name; 
+                if (trigger.classList.contains('delete-item-btn')) { 
+                    e.stopPropagation(); 
+                    deleteItem(id, name); 
+                } else if (trigger.classList.contains('edit-item-btn')) { 
+                    e.stopPropagation(); 
+                    const item = localItens.find(i => i.id === id); 
+                    if(item){ 
+                        document.getElementById('edit-item-id').value = item.id; 
+                        document.getElementById('edit-item-name').value = item.name; 
+                        document.getElementById('edit-item-quantity').value = item.quantity; 
+                        document.getElementById('edit-item-total-quantity').value = item.totalQuantity || item.quantity; 
+                        populateSelect(document.getElementById('edit-item-category'), localCategories, 'Sem Categoria', item.categoryId); 
+                        openModal(document.getElementById('edit-item-modal')); 
+                    } 
+                } else if (trigger.classList.contains('history-item-trigger')) { 
+                    showHistory('item', id, name); 
+                }
+            });
+
+            document.getElementById('category-list').addEventListener('click', (e) => { const b = e.target.closest('.delete-category-btn'); if(b){ deleteCategory(b.dataset.id, b.dataset.name); } });
+            
+            document.getElementById('cancel-quick-add-btn').addEventListener('click', () => closeModal(document.getElementById('quick-add-item-modal')));
+            document.getElementById('quick-add-item-form').addEventListener('submit', async (e) => { e.preventDefault(); const name = document.getElementById('quick-item-name').value; const quantity = document.getElementById('quick-item-quantity').value; const newItem = await addItem(name, quantity); if (newItem && activeItemInputForQuickAdd) { activeItemInputForQuickAdd.value = `${newItem.name} (Estoque: ${newItem.quantity})`; activeItemInputForQuickAdd.dataset.itemId = newItem.id; activeItemInputForQuickAdd.dataset.itemName = newItem.name; activeItemInputForQuickAdd.dispatchEvent(new Event('input')); } closeModal(document.getElementById('quick-add-item-modal')); e.target.reset(); activeItemInputForQuickAdd = null; });
+            document.getElementById('cancel-quick-add-prof-btn').addEventListener('click', () => closeModal(document.getElementById('quick-add-professor-modal')));
+            document.getElementById('quick-add-professor-form').addEventListener('submit', async (e) => { e.preventDefault(); const name = document.getElementById('quick-professor-name').value; const matricula = document.getElementById('quick-professor-matricula').value; const newProfessor = await addProfessor(name, matricula); if (newProfessor) { const professorDatalist = document.getElementById('professores-datalist'); const option = document.createElement('option'); option.value = newProfessor.name; option.dataset.id = newProfessor.id; professorDatalist.appendChild(option); document.getElementById('retirada-professor-input').value = newProfessor.name; document.getElementById('retirada-professor-id').value = newProfessor.id; document.getElementById('retirada-professor-input').dispatchEvent(new Event('input')); } closeModal(document.getElementById('quick-add-professor-modal')); });
+
+            ['filter-date', 'filter-professor', 'filter-item'].forEach(id => document.getElementById(id).addEventListener('input', () => renderRetiradas()));
+            ['item-filter', 'category-filter-select'].forEach(id => document.getElementById(id).addEventListener('input', () => renderItens(localItens)));
+            
+            document.getElementById('clear-filter-btn').addEventListener('click', () => { ['filter-date', 'filter-professor', 'filter-item'].forEach(id => document.getElementById(id).value = ''); renderRetiradas(); });
+            document.getElementById('clear-history-btn').addEventListener('click', clearAuditLog);
+            
+            document.getElementById('nova-retirada-btn').addEventListener('click', () => { 
+                currentRetirada = null; 
+                document.getElementById('retirada-form').reset(); 
+                document.getElementById('modal-title').textContent = 'Nova Retirada'; 
+                document.getElementById('retirada-date').value = new Date().toISOString().slice(0, 10); 
+                
+                const professorDatalist = document.getElementById('professores-datalist');
+                professorDatalist.innerHTML = '';
+                localProfessores.forEach(prof => {
+                    const option = document.createElement('option');
+                    option.value = prof.name;
+                    option.dataset.id = prof.id;
+                    professorDatalist.appendChild(option);
+                });
+                document.getElementById('retirada-professor-input').value = '';
+                document.getElementById('retirada-professor-id').value = '';
+                
+                document.getElementById('retirada-itens-list').innerHTML = ''; 
+                document.getElementById('retirada-itens-placeholder').classList.remove('hidden');
+                renderItemAccordionInModal();
+                openModal(document.getElementById('retirada-modal')); 
+            });
+
+            document.getElementById('retirada-professor-input').addEventListener('input', (e) => {
+                const value = e.target.value;
+                const datalistOptions = document.getElementById('professores-datalist').options;
+                const option = Array.from(datalistOptions).find(opt => normalizeString(opt.value) === normalizeString(value));
+                const canManageProfessors = currentUser.role === 'admin' || (currentUser.permissions && currentUser.permissions.canManageProfessors);
+                const quickAddBtn = document.getElementById('quick-add-professor-btn');
+                const idField = document.getElementById('retirada-professor-id');
+                
+                if (option) {
+                    idField.value = option.dataset.id;
+                    quickAddBtn.classList.add('hidden');
+                } else {
+                    idField.value = '';
+                    if (value.trim().length > 2 && canManageProfessors) {
+                        quickAddBtn.classList.remove('hidden');
+                    } else {
+                        quickAddBtn.classList.add('hidden');
+                    }
+                }
+            });
+
+            document.getElementById('quick-add-professor-btn').addEventListener('click', () => {
+                const profName = document.getElementById('retirada-professor-input').value.trim();
+                document.getElementById('quick-professor-name').value = profName;
+                document.getElementById('quick-add-professor-form').reset();
+                openModal(document.getElementById('quick-add-professor-modal'));
+            });
+
+            document.getElementById('retirada-form').addEventListener('submit', async (e) => { 
+                e.preventDefault(); 
+                const items = []; 
+                let valid = true; 
+                document.querySelectorAll('#retirada-itens-list .item-selection-row').forEach(row => { 
+                    const q = Number(row.querySelector('.item-quantity').value); 
+                    const id = row.dataset.itemId;
+                    const name = row.dataset.itemName;
+                    if(id && name && q > 0) { 
+                        items.push({ itemId:id, itemName:name, quantidade:q, quantidadeDevolvida:0 }); 
+                    } else { 
+                        valid = false; 
+                    } 
+                }); 
+                if (!valid || items.length === 0) { 
+                    showMessageModal('Erro', 'Adicione pelo menos um item com quantidade válida.'); 
+                    return; 
+                } 
+                const professorId = document.getElementById('retirada-professor-id').value;
+                const professorName = document.getElementById('retirada-professor-input').value;
+                if (!professorId) { showMessageModal('Erro', 'Professor inválido. Selecione um professor da lista ou adicione um novo.'); return; }
+                const data = { id: document.getElementById('retirada-id').value, professorName, professorId, dataRetirada: document.getElementById('retirada-date').value, itens: items, status: currentRetirada ? currentRetirada.status : 'Pendente', operator: currentRetirada ? currentRetirada.operator : currentUser.name }; if(data.id && currentRetirada) { data.itens.forEach(ni=>{ const oi=currentRetirada.itens.find(i=>i.itemId===ni.itemId); if(oi) ni.quantidadeDevolvida=oi.quantidadeDevolvida||0; }); } 
+                
+                const solicitacaoIdCarrier = document.getElementById('solicitacao-id-carrier');
+                const solicitacaoId = solicitacaoIdCarrier.value;
+
+                if(await saveRetirada(data)) {
+                    if (solicitacaoId) {
+                        await updateDoc(getDocRef('solicitacoes', solicitacaoId), { status: 'Concluída' });
+                        logAction('SOLICITACAO_CONCLUIDA', `Solicitação ID ${solicitacaoId.substring(0,5)}... concluída.`);
+                        solicitacaoIdCarrier.value = '';
+                    }
+                    closeModal(document.getElementById('retirada-modal'));
+                }
+            });
+
+            document.getElementById('retiradas-accordion-container').addEventListener('click', async (e) => { 
+                const target = e.target.closest('button'); 
+                if(!target) return; 
+                const id = target.dataset.id;
+                currentRetirada = allRetiradas.find(r => r.id === id); 
+                if(!currentRetirada) return; 
+                if (target.classList.contains('delete-retirada-btn')) deleteRetirada(id); 
+                if (target.classList.contains('finalize-btn')) showConfirmModal('Finalizar Retirada', 'Finalizar com itens pendentes?', ()=>finalizeRetirada(id)); 
+                if (target.classList.contains('edit-retirada-btn')) { 
+                    document.getElementById('modal-title').textContent = 'Editar Retirada'; 
+                    document.getElementById('retirada-id').value = id; 
+                    const professorDatalist = document.getElementById('professores-datalist');
+                    professorDatalist.innerHTML = '';
+                    localProfessores.forEach(prof => { const option = document.createElement('option'); option.value = prof.name; option.dataset.id = prof.id; professorDatalist.appendChild(option); });
+                    document.getElementById('retirada-professor-input').value = currentRetirada.professorName;
+                    document.getElementById('retirada-professor-id').value = currentRetirada.professorId;
+                    document.getElementById('retirada-date').value = currentRetirada.dataRetirada; 
+                    const list = document.getElementById('retirada-itens-list'); 
+                    list.innerHTML = ''; 
+                    document.getElementById('retirada-itens-placeholder').classList.toggle('hidden', currentRetirada.itens.length > 0);
+                    currentRetirada.itens.forEach(itemData => {
+                        const item = localItens.find(i => i.id === itemData.itemId);
+                        if(item) {
+                            const row = createItemSelectionRow(item);
+                            row.querySelector('.item-quantity').value = itemData.quantidade;
+                        }
+                    }); 
+                    renderItemAccordionInModal();
+                    openModal(document.getElementById('retirada-modal')); 
+                } 
+                if (target.classList.contains('devolucao-btn')) { 
+                    document.getElementById('devolucao-id').value = id; 
+                    document.getElementById('devolucao-professor-name').textContent = currentRetirada.professorName; 
+                    document.getElementById('devolucao-observacao').value = currentRetirada.observacao || ''; 
+                    const list = document.getElementById('devolucao-itens-list'); 
+                    list.innerHTML = ''; 
+                    currentRetirada.itens.forEach(item => { 
+                        const maxDev = item.quantidade - (item.quantidadeDevolvida || 0); 
+                        if (maxDev > 0) { 
+                            list.innerHTML += `<div class="p-3 bg-gray-50 rounded-md devolucao-item-row"><label class="block text-sm font-medium">${item.itemName}</label><p class="text-xs text-gray-500">Retirado: ${item.quantidade} | Devolvido: ${item.quantidadeDevolvida || 0}</p><input type="number" data-item-id="${item.itemId}" class="devolucao-quantity mt-1 w-full p-2 border rounded-md" placeholder="Qtd a devolver" min="0" max="${maxDev}" value="0"></div>`; 
+                        } 
+                    }); 
+                    if(list.innerHTML === '') { 
+                        showMessageModal('Aviso', 'Todos os itens desta retirada já foram devolvidos.'); 
+                        return; 
+                    } 
+                    openModal(document.getElementById('devolucao-modal')); 
+                }
+            });
+
+            document.getElementById('devolucao-form').addEventListener('submit', async (e) => { e.preventDefault(); const itensDevolvidos = Array.from(document.querySelectorAll('.devolucao-item-row .devolucao-quantity')).map(i => ({ itemId: i.dataset.itemId, quantidade: Number(i.value) })).filter(i => i.quantidade > 0); await saveDevolucao({ id: document.getElementById('devolucao-id').value, itensDevolvidos, observacao: document.getElementById('devolucao-observacao').value }); closeModal(document.getElementById('devolucao-modal')); });
+            
+            document.getElementById('solicitacoes-table-body').addEventListener('click', async (e) => {
+                const button = e.target.closest('button');
+                if (!button) return;
+
+                const solicitacaoId = button.dataset.id;
+                const solicitacao = localSolicitacoes.find(s => s.id === solicitacaoId);
+                if (!solicitacao) return;
+
+                if (button.classList.contains('reject-btn')) {
+                    showConfirmModal('Rejeitar Solicitação', 'Deseja realmente rejeitar este pedido?', async () => {
+                        await updateDoc(getDocRef('solicitacoes', solicitacaoId), { status: 'Rejeitada' });
+                        logAction('SOLICITACAO_REJEITADA', `Solicitação de ${solicitacao.solicitanteName} rejeitada.`);
+                        showToast('Solicitação rejeitada.', 'info');
+                    });
+                }
+
+                if (button.classList.contains('approve-btn')) {
+                    document.getElementById('retirada-form').reset();
+                    document.getElementById('modal-title').textContent = 'Registrar Saída de Solicitação';
+                    
+                    document.getElementById('retirada-professor-input').value = solicitacao.solicitanteName;
+                    document.getElementById('retirada-professor-id').value = solicitacao.solicitanteId;
+                    document.getElementById('retirada-date').value = new Date().toISOString().slice(0, 10);
+                    
+                    document.getElementById('solicitacao-id-carrier').value = solicitacao.id;
+
+                    const list = document.getElementById('retirada-itens-list');
+                    list.innerHTML = '';
+                    document.getElementById('retirada-itens-placeholder').classList.toggle('hidden', solicitacao.itensSolicitados.length > 0);
+                    solicitacao.itensSolicitados.forEach(itemData => {
+                        const item = localItens.find(i => i.id === itemData.itemId);
+                        if(item) {
+                            createItemSelectionRow(item);
+                            // This part is tricky, we need to find the created row and set its quantity
+                            const row = list.querySelector(`[data-item-id="${item.id}"]`);
+                            if(row) row.querySelector('.item-quantity').value = itemData.quantidade;
+                        }
+                    });
+                    
+                    renderItemAccordionInModal();
+                    openModal(document.getElementById('retirada-modal'));
+                }
+            });
+
+            document.getElementById('modal-item-filter').addEventListener('input', (e) => renderItemAccordionInModal(e.target.value));
+            document.getElementById('modal-itens-accordion-container').addEventListener('click', (e) => {
+                const button = e.target.closest('.add-item-from-modal-btn');
+                if (!button) return;
+                const itemId = button.dataset.itemId;
+                const item = localItens.find(i => i.id === itemId);
+                if (item) {
+                    const alreadySelected = document.querySelector(`#retirada-itens-list .item-selection-row[data-item-id="${itemId}"]`);
+                    if (!alreadySelected) {
+                        createItemSelectionRow(item);
+                    } else {
+                        alreadySelected.querySelector('input').focus();
+                        showToast('Item já está na lista.', 'info');
+                    }
+                }
+            });
+            document.getElementById('retirada-itens-list').addEventListener('click', (e) => { 
+                const btn = e.target.closest('.remove-item-row-btn');
+                if(btn) {
+                    btn.closest('.item-selection-row').remove();
+                    const list = document.getElementById('retirada-itens-list');
+                    document.getElementById('retirada-itens-placeholder').classList.toggle('hidden', list.children.length > 0);
+                }
+            });
+
+            ['cancel-retirada-btn','cancel-devolucao-btn','confirm-cancel-btn','message-ok-btn','close-history-modal-btn','cancel-edit-item-btn', 'cancel-edit-operator-btn', 'cancel-quick-add-btn', 'cancel-quick-add-prof-btn', 'cancel-edit-professor-btn', 'close-details-modal-btn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if(btn) btn.addEventListener('click', (e) => closeModal(e.target.closest('.modal')));
+            });
+            document.getElementById('gerar-pdf-btn').addEventListener('click', generatePDF);
+            
+            document.getElementById('pending-card').addEventListener('click', () => {
+                const modal = document.getElementById('details-modal');
+                const title = document.getElementById('details-modal-title');
+                const content = document.getElementById('details-modal-content');
+                
+                title.textContent = "Retiradas Pendentes";
+                
+                const pendingRetiradas = allRetiradas.filter(r => r.status === 'Pendente' || r.status === 'Devolvido Parcialmente');
+                let tableHtml = `<p class="text-center text-gray-500">Nenhuma retirada pendente.</p>`;
+
+                if (pendingRetiradas.length > 0) {
+                    tableHtml = `<table class="w-full text-sm text-left text-gray-500">
+                                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3">Professor</th>
+                                            <th class="px-6 py-3">Item</th>
+                                            <th class="px-6 py-3">Qtd. Pendente</th>
+                                            <th class="px-6 py-3">Data da Retirada</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+                    
+                    pendingRetiradas.forEach(retirada => {
+                        retirada.itens.forEach(item => {
+                            const pendingQty = item.quantidade - (item.quantidadeDevolvida || 0);
+                            if (pendingQty > 0) {
+                                tableHtml += `<tr class="border-b">
+                                                    <td class="px-6 py-4 font-medium">${retirada.professorName}</td>
+                                                    <td class="px-6 py-4">${item.itemName}</td>
+                                                    <td class="px-6 py-4 font-bold text-center">${pendingQty}</td>
+                                                    <td class="px-6 py-4">${new Date(retirada.dataRetirada + 'T00:00:00').toLocaleDateString('pt-BR')}</td>
+                                                </tr>`;
+                            }
+                        });
+                    });
+                    
+                    tableHtml += `</tbody></table>`;
+                }
+                
+                content.innerHTML = tableHtml;
+                openModal(modal);
+            });
+
+            document.getElementById('low-stock-card').addEventListener('click', () => {
+                const modal = document.getElementById('details-modal');
+                const title = document.getElementById('details-modal-title');
+                const content = document.getElementById('details-modal-content');
+
+                title.textContent = "Itens com Estoque Baixo";
+
+                const lowStockItens = localItens.filter(i => {
+                    const total = i.totalQuantity || 0;
+                    if (total === 0) return false;
+                    return (i.quantity / total) * 100 <= 40;
+                });
+
+                let tableHtml = `<p class="text-center text-gray-500">Nenhum item com estoque baixo.</p>`;
+
+                if (lowStockItens.length > 0) {
+                    tableHtml = `<table class="w-full text-sm text-left text-gray-500">
+                                    <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                        <tr>
+                                            <th class="px-6 py-3">Item</th>
+                                            <th class="px-6 py-3">Categoria</th>
+                                            <th class="px-6 py-3">Estoque Atual</th>
+                                            <th class="px-6 py-3">Estoque Total</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+
+                    lowStockItens.forEach(item => {
+                          const categoryName = localCategories.find(c => c.id === item.categoryId)?.name || 'Sem Categoria';
+                          tableHtml += `<tr class="border-b">
+                                            <td class="px-6 py-4 font-medium">${item.name}</td>
+                                            <td class="px-6 py-4">${categoryName}</td>
+                                            <td class="px-6 py-4 font-bold text-center">${item.quantity}</td>
+                                            <td class="px-6 py-4 text-center">${item.totalQuantity}</td>
+                                        </tr>`;
+                    });
+
+                    tableHtml += `</tbody></table>`;
+                }
+                
+                content.innerHTML = tableHtml;
+                openModal(modal);
             });
         });
-        
-        reservarCheckbox.addEventListener('change', () => {
-            const isChecked = reservarCheckbox.checked;
-            dateContainer.classList.toggle('hidden', !isChecked);
-            if (isChecked) {
-                submitBtn.innerHTML = '<i class="fas fa-calendar-check mr-2"></i>Reservar Itens';
-                retiradaDateInput.required = true;
-                 const tomorrow = new Date();
-                tomorrow.setDate(tomorrow.getDate() + 1);
-                retiradaDateInput.value = tomorrow.toISOString().split('T')[0];
-                retiradaDateInput.setAttribute('min', tomorrow.toISOString().split('T')[0]);
-            } else {
-                submitBtn.innerHTML = '<i class="fas fa-hand-paper mr-2"></i>Solicitar';
-                retiradaDateInput.required = false;
-                retiradaDateInput.value = '';
-            }
-            document.getElementById('itens-list').innerHTML = '';
-            createItemRow('itens-list');
-        });
-
-        retiradaDateInput.addEventListener('change', () => {
-             document.getElementById('itens-list').innerHTML = '';
-             createItemRow('itens-list');
-        });
-
-        document.getElementById('add-item-btn').addEventListener('click', () => createItemRow('itens-list'));
-        document.getElementById('add-kit-item-btn').addEventListener('click', () => createItemRow('kit-itens-list'));
-        
-        document.getElementById('itens-list').addEventListener('click', e => {
-            const removeBtn = e.target.closest('.remove-item-btn');
-            if (removeBtn && document.getElementById('itens-list').children.length > 1) {
-                removeBtn.closest('.item-row').remove();
-            }
-        });
-        document.getElementById('kit-itens-list').addEventListener('click', e => {
-            const removeBtn = e.target.closest('.remove-item-btn');
-            if (removeBtn && document.getElementById('kit-itens-list').children.length > 1) {
-                removeBtn.closest('.item-row').remove();
-            }
-        });
-
-        form.addEventListener('submit', async e => {
-            e.preventDefault();
-            if (!currentProfessor) {
-                alert('Sessão encerrada. Por favor, acesse com sua matrícula novamente.');
-                return;
-            }
-            
-            let dataAgendamento;
-            if (reservarCheckbox.checked) {
-                dataAgendamento = retiradaDateInput.value;
-                if (!dataAgendamento) {
-                    alert('Por favor, selecione uma data para a reserva.');
-                    return;
-                }
-            } else {
-                dataAgendamento = new Date().toISOString().split('T')[0];
-            }
-
-
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando...';
-
-            const itensSolicitados = [];
-            let formIsValid = true, errorMessage = '';
-            
-            for (const row of document.querySelectorAll('#itens-list .item-row')) {
-                handleStockValidation(row);
-                if (!row.querySelector('.error-message').classList.contains('hidden')) { formIsValid = false; errorMessage = 'Corrija as quantidades (estoque excedido).'; break; }
-                
-                const itemId = row.dataset.itemId;
-                const itemName = row.dataset.itemName;
-                const quantity = row.querySelector('.item-quantity-input').value;
-
-                if (itemId && itemName && quantity > 0) {
-                    itensSolicitados.push({ itemId, itemName, quantidade: Number(quantity) });
-                } else if(row.querySelector('.item-search-input').value || quantity) { 
-                    formIsValid = false; errorMessage = 'Verifique se todos os itens e quantidades são válidos.'; break; 
-                }
-            }
-
-            if (!formIsValid || itensSolicitados.length === 0) {
-                alert(errorMessage || 'A solicitação está inválida ou vazia.');
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = reservarCheckbox.checked ? '<i class="fas fa-calendar-check mr-2"></i>Reservar Itens' : '<i class="fas fa-hand-paper mr-2"></i>Solicitar';
-                return;
-            }
-
-            try {
-                await addDoc(getCollectionRef('solicitacoes'), {
-                    solicitanteId: currentProfessor.id,
-                    solicitanteName: currentProfessor.name,
-                    dataAgendamento,
-                    itensSolicitados,
-                    observacao: document.getElementById('observacao').value.trim(),
-                    status: 'Pendente',
-                    timestamp: serverTimestamp()
-                });
-                showSuccessModal('Sua solicitação foi enviada com sucesso!', async () => {
-                    await loadInitialData();
-                    resetRequestForm();
-                    displayHistory(currentProfessor.id);
-                });
-            } catch (error) {
-                console.error("Erro ao enviar solicitação:", error);
-                alert('Houve um erro ao enviar sua solicitação.');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = reservarCheckbox.checked ? '<i class="fas fa-calendar-check mr-2"></i>Reservar Itens' : '<i class="fas fa-hand-paper mr-2"></i>Solicitar';
-            }
-        });
-
-        document.getElementById('create-kit-form').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            const kitName = document.getElementById('kit-name').value.trim();
-            if (!kitName) { alert('Por favor, dê um nome ao seu kit.'); return; }
-
-            const items = [];
-            let formIsValid = true;
-
-            for (const row of document.querySelectorAll('#kit-itens-list .item-row')) {
-                const itemId = row.dataset.itemId;
-                const itemName = row.dataset.itemName;
-                const quantity = row.querySelector('.item-quantity-input').value;
-
-                if (itemId && itemName && quantity > 0) {
-                    items.push({ itemId, itemName, quantidade: Number(quantity) });
-                } else if(row.querySelector('.item-search-input').value || quantity) { 
-                    formIsValid = false; 
-                }
-            }
-            
-            if (!formIsValid || items.length === 0) {
-                alert('Verifique se todos os itens e quantidades do kit são válidos.'); return;
-            }
-
-            try {
-                await addDoc(getCollectionRef('kits'), { professorId: currentProfessor.id, kitName, items });
-                e.target.reset();
-                document.getElementById('kit-itens-list').innerHTML = '';
-                createItemRow('kit-itens-list');
-                renderKits();
-                showSuccessModal('Seu kit foi salvo com sucesso!');
-            } catch (err) {
-                console.error("Erro ao salvar kit:", err);
-                alert('Não foi possível salvar o kit.');
-            }
-        });
-
-        document.getElementById('kits-list').addEventListener('click', (e) => {
-            const useBtn = e.target.closest('.use-kit-btn');
-            const deleteBtn = e.target.closest('.delete-kit-btn');
-
-            if (useBtn) {
-                const items = JSON.parse(useBtn.dataset.kitItems);
-                const itemListContainer = document.getElementById('itens-list');
-                itemListContainer.innerHTML = '';
-                items.forEach(item => createItemRow('itens-list', item));
-                document.querySelector('.tab-button[data-tab="solicitacao"]').click();
-            }
-
-            if (deleteBtn) {
-                if (confirm('Tem certeza que deseja excluir este kit?')) {
-                    const kitId = deleteBtn.dataset.id;
-                    deleteDoc(doc(db, 'almoxarifado', appId, 'kits', kitId)).then(() => {
-                        renderKits();
-                        alert('Kit excluído com sucesso.');
-                    }).catch(err => console.error("Erro ao excluir kit:", err));
-                }
-            }
-        });
-
-        document.getElementById('success-ok-btn').addEventListener('click', () => {
-            document.getElementById('success-modal').classList.add('hidden');
-        });
-
     </script>
 </body>
 </html>
