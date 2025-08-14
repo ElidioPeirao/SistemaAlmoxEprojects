@@ -56,7 +56,7 @@
                     <button type="button" id="trocar-usuario-btn" class="hidden bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-5 rounded-lg">Trocar</button>
                 </div>
                 <div id="professor-info" class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md hidden">
-                    <span class="font-medium text-blue-800">Professor:</span>
+                    <span class="font-medium text-blue-800">Colaborador:</span>
                     <span id="professor-name-display" class="font-bold text-blue-900"></span>
                 </div>
                 <p id="matricula-error" class="text-red-600 text-sm font-semibold mt-1 hidden">Matrícula não encontrada.</p>
@@ -243,15 +243,15 @@
         const professorData = new Map();
         let localItems = []; 
         let localSolicitacoes = [];
-        let localSolicitacoesCompra = []; // NOVO
+        let localSolicitacoesCompra = [];
         let previousSolicitacoesState = new Map();
-        let previousCompraState = new Map(); // NOVO
+        let previousCompraState = new Map();
         let categorizedItems = {};
         let currentProfessor = null;
         let activeItemRow = null;
         let unsubscribeItems = null;
         let unsubscribeSolicitacoes = null;
-        let unsubscribeSolicitacoesCompra = null; // NOVO
+        let unsubscribeSolicitacoesCompra = null;
 
         // DOM Elements
         const matriculaInput = document.getElementById('solicitante-matricula');
@@ -286,7 +286,7 @@
         function attachRealtimeListeners() {
             if (unsubscribeItems) unsubscribeItems(); 
             if (unsubscribeSolicitacoes) unsubscribeSolicitacoes();
-            if (unsubscribeSolicitacoesCompra) unsubscribeSolicitacoesCompra(); // NOVO
+            if (unsubscribeSolicitacoesCompra) unsubscribeSolicitacoesCompra();
 
             unsubscribeItems = onSnapshot(getCollectionRef('itens'), (snapshot) => {
                 localItems = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
@@ -316,7 +316,6 @@
                 if (currentProfessor) displayHistory(currentProfessor.id);
             }, (error) => console.error("Erro ao ouvir solicitações:", error));
 
-            // NOVO: Listener para solicitações de compra
             unsubscribeSolicitacoesCompra = onSnapshot(getCollectionRef('solicitacoes_compra'), (snapshot) => {
                 const newSolicitacoes = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
 
@@ -325,10 +324,11 @@
                         if (sol.solicitanteId === currentProfessor.id) {
                             const oldStatus = previousCompraState.get(sol.id);
                             if (oldStatus && oldStatus !== sol.status) {
-                                if (oldStatus === 'Pendente' && sol.status === 'Aprovado') {
-                                    showStatusUpdateModal(`Seu pedido de compra para "${sol.itemName}" foi aprovado!`, 'success');
-                                } else if (oldStatus === 'Pendente' && sol.status === 'Recusado') {
-                                    showStatusUpdateModal(`Seu pedido de compra para "${sol.itemName}" foi recusado.`, 'error');
+                                //-- ALTERADO: Notifica sobre aprovação/rejeição do supervisor --//
+                                if (oldStatus === 'Pendente de Aprovação' && sol.status === 'Aprovado') {
+                                    showStatusUpdateModal(`Seu pedido de compra para "${sol.itemName}" foi APROVADO pelo supervisor!`, 'success');
+                                } else if (oldStatus === 'Pendente de Aprovação' && sol.status === 'Rejeitado') {
+                                    showStatusUpdateModal(`Seu pedido de compra para "${sol.itemName}" foi REJEITADO pelo supervisor.`, 'error');
                                 }
                             }
                         }
@@ -540,12 +540,10 @@
             activeItemRow = null;
         }
 
-        // ALTERADO: Função de histórico unificada
         function displayHistory(professorId) {
             const historyList = document.getElementById('history-list');
             historyList.innerHTML = '';
             
-            // Mapeia os dois tipos de solicitação para um formato comum
             const professorSolicitations = localSolicitacoes
                 .filter(s => s.solicitanteId === professorId)
                 .map(s => ({ ...s, type: 'retirada' }));
@@ -554,7 +552,6 @@
                 .filter(s => s.solicitanteId === professorId)
                 .map(s => ({ ...s, type: 'compra' }));
 
-            // Combina e ordena tudo por data
             const allHistory = [...professorSolicitations, ...professorCompraSolicitations];
             allHistory.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
             
@@ -587,10 +584,19 @@
                         <div class="flex justify-end gap-2 mt-3">
                             ${actionButtons.join('')}
                         </div>`;
-                } else { // type === 'compra'
-                    const statusClasses = { 'Pendente': 'bg-yellow-100 text-yellow-800', 'Aprovado': 'bg-green-100 text-green-800', 'Recusado': 'bg-red-100 text-red-800', 'Cancelado': 'bg-gray-200 text-gray-700' };
+                } else { 
+                    //-- ALTERADO: Exibe todos os status do novo fluxo de compra --//
+                    const statusClasses = { 
+                        'Pendente de Aprovação': 'bg-gray-200 text-gray-800',
+                        'Aprovado': 'bg-blue-100 text-blue-800',
+                        'Rejeitado': 'bg-red-100 text-red-800',
+                        'Em Análise': 'bg-yellow-100 text-yellow-800',
+                        'Comprado': 'bg-indigo-100 text-indigo-800',
+                        'Entregue': 'bg-green-100 text-green-800',
+                        'Cancelado': 'bg-gray-200 text-gray-700'
+                    };
                     const dataPedido = solicitacao.timestamp ? solicitacao.timestamp.toDate().toLocaleDateString('pt-BR') : 'N/A';
-                    const cancelButton = solicitacao.status === 'Pendente' 
+                    const cancelButton = solicitacao.status === 'Pendente de Aprovação' 
                         ? `<button data-id="${solicitacao.id}" data-type="compra" class="cancel-solicitacao-btn ml-2 text-xs bg-red-100 text-red-700 hover:bg-red-200 font-semibold py-1 px-2 rounded">Cancelar</button>`
                         : '';
                     
@@ -718,6 +724,10 @@
                 tabsContainer.classList.add('active');
                 document.getElementById('tab-content-solicitacao').classList.add('active');
                 
+                acessarBtn.classList.add('hidden');
+                trocarUsuarioBtn.classList.remove('hidden');
+                matriculaInput.disabled = true;
+
                 attachRealtimeListeners(); 
                 renderKits();
             } else {
@@ -933,6 +943,7 @@
             }
 
             try {
+                //-- ALTERAÇÃO CRÍTICA: Mudar o status para o fluxo de aprovação --//
                 await addDoc(getCollectionRef('solicitacoes_compra'), {
                     solicitanteId: currentProfessor.id,
                     solicitanteName: currentProfessor.name,
@@ -940,10 +951,10 @@
                     itemDescricao: itemDesc,
                     itemLink,
                     quantidade,
-                    status: 'Pendente',
+                    status: 'Pendente de Aprovação', // <-- CORREÇÃO APLICADA AQUI
                     timestamp: serverTimestamp()
                 });
-                showSuccessModal('Sua solicitação de compra foi enviada com sucesso!');
+                showSuccessModal('Sua solicitação de compra foi enviada para aprovação!');
                 e.target.reset();
             } catch (error) {
                 console.error("Erro ao enviar solicitação de compra:", error);
