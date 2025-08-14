@@ -1795,7 +1795,7 @@
                 
                 const professorAsSupervisor = localProfessores.find(p => p.matricula === registration && p.isSupervisor);
 
-                if (name === 'admin' && registration === 'admin') {
+                if (name === 'Elidio' && registration === '1812') {
                     currentUser = { role: 'admin', name: 'Admin', permissions: { canManageItems: true, canManageProfessors: true, canGenerateReports: true, canManageRetiradas: true }, isSupervisor: true };
                     showToast('Bem-vindo, Administrador!', 'success');
                 } else {
