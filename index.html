@@ -15,7 +15,6 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.8.2/jspdf.plugin.autotable.min.js"></script>
 
     <style>
-        /* Custom styles for better UX */
         body { font-family: 'Inter', sans-serif; }
         .modal { transition: opacity 0.3s ease; }
         .tab-button.active {
@@ -24,16 +23,14 @@
         }
         .observation-text {
             font-style: italic;
-            font-size: 0.75rem; /* text-xs */
-            color: #4b5563; /* text-gray-600 */
+            font-size: 0.75rem;
+            color: #4b5563;
         }
-        /* Style for disabled elements */
         button:disabled, input:disabled, select:disabled, textarea:disabled {
             opacity: 0.6;
             cursor: not-allowed;
-            background-color: #e5e7eb !important; /* Use important to override hover styles */
+            background-color: #e5e7eb !important;
         }
-        /* Toast Notification Styles */
         #toast-container {
             position: fixed;
             top: 1rem;
@@ -66,7 +63,6 @@
             transform: translateY(-4px);
             box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
         }
-        /* Styles for accordion */
         details > summary { list-style: none; cursor: pointer; }
         details > summary::-webkit-details-marker { display: none; }
         details > summary .chevron { transition: transform 0.2s; }
@@ -90,14 +86,15 @@
             <div id="operator-info" class="text-sm hidden">
                 <i class="fas fa-user-shield text-gray-600"></i>
                 <span>Operador: <strong id="operator-name">Nenhum</strong></span>
+                <span id="supervisor-badge" class="hidden ml-2 text-xs font-bold text-white bg-purple-600 px-2 py-1 rounded-full">Supervisor</span>
                 <button id="logout-btn" class="ml-4 bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-md text-xs">[Sair]</button>
             </div>
         </div>
 
-        <div id="logged-out-view" class="hidden text-center bg-white p-10 rounded-lg shadow-lg mt-6">
+        <div id="logged-out-view" class="text-center bg-white p-10 rounded-lg shadow-lg mt-6">
             <i class="fas fa-lock text-6xl text-gray-300 mb-4"></i>
             <h2 class="text-2xl font-bold text-gray-800">Acesso Restrito</h2>
-            <p class="text-gray-500 mt-2 mb-6">Por favor, faça o login como operador para gerenciar o almoxarifado.</p>
+            <p class="text-gray-500 mt-2 mb-6">Por favor, faça o login para gerenciar o almoxarifado.</p>
             <button id="main-login-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition-transform transform hover:scale-105">
                 <i class="fas fa-sign-in-alt mr-2"></i>Fazer Login
             </button>
@@ -109,18 +106,22 @@
                         <i class="fas fa-chart-line mr-2"></i>Dashboard
                     </button>
                     <button data-tab="solicitacoes" class="tab-button relative py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
-                        <i class="fas fa-inbox mr-2"></i>Solicitações
+                        <i class="fas fa-inbox mr-2"></i>Solicitações de Retirada
                         <span id="solicitacoes-badge" class="hidden absolute top-2 right-[-8px] bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
                     </button>
+                    <button id="approvals-tab-btn" data-tab="approvals" class="tab-button hidden relative py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
+                        <i class="fas fa-check-double mr-2"></i>Aprovações de Compra
+                        <span id="approvals-badge" class="hidden absolute top-2 right-[-8px] bg-orange-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                    </button>
                     <button data-tab="compras" class="tab-button relative py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
-                        <i class="fas fa-shopping-cart mr-2"></i>Solicitações de Compra
-                        <span id="compras-badge" class="hidden absolute top-2 right-[-8px] bg-red-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
+                        <i class="fas fa-shopping-cart mr-2"></i>Pedidos de Compra
+                        <span id="compras-badge" class="hidden absolute top-2 right-[-8px] bg-blue-500 text-white text-xs font-bold rounded-full h-5 w-5 flex items-center justify-center">0</span>
                     </button>
                     <button data-tab="retiradas" class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
                         <i class="fas fa-dolly mr-2"></i>Retiradas
                     </button>
                     <button data-tab="professores" class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
-                        <i class="fas fa-chalkboard-teacher mr-2"></i>Professores
+                        <i class="fas fa-users mr-2"></i>Colaboradores
                     </button>
                     <button data-tab="itens" class="tab-button py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600 hover:border-blue-300">
                         <i class="fas fa-box-open mr-2"></i>Itens e Categorias
@@ -138,39 +139,39 @@
             <div id="tab-content-dashboard" class="tab-pane active">
                  <h2 class="text-2xl font-semibold text-gray-700 mb-6">Painel de Controle</h2>
                  <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                       <div id="pending-card" class="dashboard-card bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg shadow-md">
+                         <div id="pending-card" class="dashboard-card bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-4 rounded-lg shadow-md">
+                             <div class="flex justify-between items-center">
+                                 <div>
+                                     <div class="font-bold text-sm uppercase">Retiradas Pendentes</div>
+                                     <div id="pending-count" class="text-3xl font-bold">0</div>
+                                 </div>
+                                 <i class="fas fa-exclamation-triangle text-3xl opacity-50"></i>
+                             </div>
+                         </div>
+                          <div id="low-stock-card" class="dashboard-card bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow-md">
                            <div class="flex justify-between items-center">
                                <div>
-                                   <div class="font-bold text-sm uppercase">Retiradas Pendentes</div>
-                                   <div id="pending-count" class="text-3xl font-bold">0</div>
+                                   <div class="font-bold text-sm uppercase">Itens com Estoque Baixo</div>
+                                   <div id="low-stock-count" class="text-3xl font-bold">0</div>
                                </div>
-                               <i class="fas fa-exclamation-triangle text-3xl opacity-50"></i>
+                               <i class="fas fa-battery-quarter text-3xl opacity-50"></i>
                            </div>
-                       </div>
-                        <div id="low-stock-card" class="dashboard-card bg-red-100 border-l-4 border-red-500 text-red-700 p-4 rounded-lg shadow-md">
-                          <div class="flex justify-between items-center">
-                              <div>
-                                  <div class="font-bold text-sm uppercase">Itens com Estoque Baixo</div>
-                                  <div id="low-stock-count" class="text-3xl font-bold">0</div>
-                              </div>
-                              <i class="fas fa-battery-quarter text-3xl opacity-50"></i>
-                          </div>
-                        </div>
+                         </div>
                  </div>
                  <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                       <div class="bg-white p-6 rounded-lg shadow-lg">
-                           <h3 class="font-bold mb-4 text-gray-700">Itens Mais Retirados</h3>
-                           <canvas id="top-items-chart"></canvas>
-                       </div>
-                        <div class="bg-white p-6 rounded-lg shadow-lg">
-                           <h3 class="font-bold mb-4 text-gray-700">Professores com Mais Retiradas</h3>
-                           <canvas id="top-professors-chart"></canvas>
-                       </div>
+                         <div class="bg-white p-6 rounded-lg shadow-lg">
+                             <h3 class="font-bold mb-4 text-gray-700">Itens Mais Retirados</h3>
+                             <canvas id="top-items-chart"></canvas>
+                         </div>
+                          <div class="bg-white p-6 rounded-lg shadow-lg">
+                             <h3 class="font-bold mb-4 text-gray-700">Colaboradores com Mais Retiradas</h3>
+                             <canvas id="top-professors-chart"></canvas>
+                         </div>
                  </div>
             </div>
             
             <div id="tab-content-solicitacoes" class="tab-pane hidden">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-6">Solicitações Pendentes</h2>
+                <h2 class="text-2xl font-semibold text-gray-700 mb-6">Solicitações de Retirada Pendentes</h2>
                 <div class="bg-white p-6 rounded-lg shadow-lg">
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
@@ -184,13 +185,35 @@
                             </thead>
                             <tbody id="solicitacoes-table-body"></tbody>
                         </table>
-                        <p id="solicitacoes-placeholder" class="text-center py-8 text-gray-400">Nenhuma solicitação pendente.</p>
+                        <p id="solicitacoes-placeholder" class="text-center py-8 text-gray-400">Nenhuma solicitação de retirada pendente.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div id="tab-content-approvals" class="tab-pane hidden">
+                <h2 class="text-2xl font-semibold text-gray-700 mb-6">Aprovações de Compra Pendentes</h2>
+                <div class="bg-white p-6 rounded-lg shadow-lg">
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead class="text-xs text-gray-700 uppercase bg-gray-50">
+                                <tr>
+                                    <th class="px-4 py-3 text-left">Data</th>
+                                    <th class="px-4 py-3 text-left">Solicitante</th>
+                                    <th class="px-4 py-3 text-left">Item</th>
+                                    <th class="px-4 py-3 text-left">Descrição</th>
+                                    <th class="px-4 py-3 text-left">Link</th>
+                                    <th class="px-4 py-3 text-center">Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="approvals-table-body"></tbody>
+                        </table>
+                        <p id="approvals-placeholder" class="text-center py-8 text-gray-400">Nenhuma solicitação de compra para aprovar.</p>
                     </div>
                 </div>
             </div>
 
             <div id="tab-content-compras" class="tab-pane hidden">
-                <h2 class="text-2xl font-semibold text-gray-700 mb-6">Solicitações de Compra</h2>
+                <h2 class="text-2xl font-semibold text-gray-700 mb-6">Pedidos de Compra Aprovados</h2>
                 <div class="bg-white p-6 rounded-lg shadow-lg">
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
@@ -207,7 +230,7 @@
                             </thead>
                             <tbody id="compras-table-body"></tbody>
                         </table>
-                        <p id="compras-placeholder" class="text-center py-8 text-gray-400">Nenhuma solicitação de compra encontrada.</p>
+                        <p id="compras-placeholder" class="text-center py-8 text-gray-400">Nenhum pedido de compra encontrado.</p>
                     </div>
                 </div>
             </div>
@@ -238,8 +261,8 @@
                            <input type="date" id="filter-date" class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                        </div>
                        <div>
-                           <label for="filter-professor" class="block text-sm font-medium text-gray-600">Nome do Professor</label>
-                           <input type="text" id="filter-professor" placeholder="Buscar por professor..." class="mt-1 p-2 w-full border border-gray-300 rounded-md">
+                           <label for="filter-professor" class="block text-sm font-medium text-gray-600">Nome do Colaborador</label>
+                           <input type="text" id="filter-professor" placeholder="Buscar por colaborador..." class="mt-1 p-2 w-full border border-gray-300 rounded-md">
                        </div>
                         <div>
                            <label for="filter-item" class="block text-sm font-medium text-gray-600">Nome do Item</label>
@@ -259,68 +282,72 @@
             </div>
 
             <div id="tab-content-professores" class="tab-pane hidden">
-                 <h2 class="text-2xl font-semibold text-gray-700 mb-6">Cadastro de Professores</h2>
+                 <h2 class="text-2xl font-semibold text-gray-700 mb-6">Cadastro de Colaboradores</h2>
                  <div id="professores-content" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                       <div class="md:col-span-1">
-                         <div class="bg-white p-6 rounded-lg shadow-lg">
-                             <h3 class="font-bold mb-4">Adicionar Professor</h3>
-                             <form id="add-professor-form" class="space-y-4">
-                                 <input type="text" id="professor-name" placeholder="Nome do Professor" class="w-full p-2 border border-gray-300 rounded-md" required>
-                                 <input type="text" id="professor-matricula" placeholder="Matrícula" class="w-full p-2 border border-gray-300 rounded-md" required>
-                                 <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Adicionar</button>
-                             </form>
+                         <div class="md:col-span-1">
+                           <div class="bg-white p-6 rounded-lg shadow-lg">
+                               <h3 class="font-bold mb-4">Adicionar Colaborador</h3>
+                               <form id="add-professor-form" class="space-y-4">
+                                   <input type="text" id="professor-name" placeholder="Nome do Colaborador" class="w-full p-2 border border-gray-300 rounded-md" required>
+                                   <input type="text" id="professor-matricula" placeholder="Matrícula" class="w-full p-2 border border-gray-300 rounded-md" required>
+                                   <label id="supervisor-checkbox-container" class="flex items-center gap-2 text-sm font-medium text-gray-700">
+                                       <input type="checkbox" id="professor-is-supervisor" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                       É Supervisor?
+                                   </label>
+                                   <button type="submit" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Adicionar</button>
+                               </form>
+                           </div>
                          </div>
-                       </div>
-                       <div class="md-col-span-2">
-                         <div class="bg-white p-6 rounded-lg shadow-lg">
-                             <h3 class="font-bold mb-4">Professores Cadastrados</h3>
-                             <ul id="professores-list" class="space-y-2"></ul>
-                              <p id="professores-placeholder" class="text-center py-8 text-gray-400">Nenhum professor cadastrado.</p>
+                         <div class="md-col-span-2">
+                           <div class="bg-white p-6 rounded-lg shadow-lg">
+                               <h3 class="font-bold mb-4">Colaboradores Cadastrados</h3>
+                               <ul id="professores-list" class="space-y-2"></ul>
+                                <p id="professores-placeholder" class="text-center py-8 text-gray-400">Nenhum colaborador cadastrado.</p>
+                           </div>
                          </div>
-                       </div>
                  </div>
             </div>
 
             <div id="tab-content-itens" class="tab-pane hidden">
                  <h2 class="text-2xl font-semibold text-gray-700 mb-6">Itens e Categorias</h2>
                  <div id="itens-content" class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                       <div class="lg:col-span-1">
-                         <div class="bg-white p-6 rounded-lg shadow-lg">
-                             <h3 class="font-bold mb-4">Gerenciar Categorias</h3>
-                              <form id="add-category-form" class="flex gap-2 mb-4">
-                                 <input type="text" id="category-name" placeholder="Nova Categoria" class="w-full p-2 border border-gray-300 rounded-md" required>
-                                 <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold p-2 rounded-lg"><i class="fas fa-plus"></i></button>
-                             </form>
-                             <ul id="category-list" class="space-y-2 max-h-60 overflow-y-auto"></ul>
-                             <p id="category-placeholder" class="text-center py-4 text-gray-400 text-sm">Nenhuma categoria.</p>
+                         <div class="lg:col-span-1">
+                           <div class="bg-white p-6 rounded-lg shadow-lg">
+                               <h3 class="font-bold mb-4">Gerenciar Categorias</h3>
+                                <form id="add-category-form" class="flex gap-2 mb-4">
+                                   <input type="text" id="category-name" placeholder="Nova Categoria" class="w-full p-2 border border-gray-300 rounded-md" required>
+                                   <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold p-2 rounded-lg"><i class="fas fa-plus"></i></button>
+                               </form>
+                               <ul id="category-list" class="space-y-2 max-h-60 overflow-y-auto"></ul>
+                               <p id="category-placeholder" class="text-center py-4 text-gray-400 text-sm">Nenhuma categoria.</p>
+                           </div>
                          </div>
-                       </div>
-                       <div class="lg:col-span-2">
-                         <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
-                             <h3 class="font-bold mb-4">Adicionar Novo Item</h3>
-                             <form id="add-item-form" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                 <input type="text" id="item-name" placeholder="Nome do Item" class="sm:col-span-2 p-2 border border-gray-300 rounded-md" required>
-                                 <input type="number" id="item-initial-quantity" placeholder="Estoque Inicial" class="p-2 border border-gray-300 rounded-md" required min="1">
-                                 <select id="item-category" class="sm:col-span-2 p-2 border border-gray-300 rounded-md bg-white">
-                                     <option value="">Sem Categoria</option>
-                                 </select>
-                                 <button type="submit" class="sm:col-span-1 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Adicionar Item</button>
-                             </form>
+                         <div class="lg:col-span-2">
+                           <div class="bg-white p-6 rounded-lg shadow-lg mb-8">
+                               <h3 class="font-bold mb-4">Adicionar Novo Item</h3>
+                               <form id="add-item-form" class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                   <input type="text" id="item-name" placeholder="Nome do Item" class="sm:col-span-2 p-2 border border-gray-300 rounded-md" required>
+                                   <input type="number" id="item-initial-quantity" placeholder="Estoque Inicial" class="p-2 border border-gray-300 rounded-md" required min="1">
+                                   <select id="item-category" class="sm:col-span-2 p-2 border border-gray-300 rounded-md bg-white">
+                                       <option value="">Sem Categoria</option>
+                                   </select>
+                                   <button type="submit" class="sm:col-span-1 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Adicionar Item</button>
+                               </form>
+                           </div>
+                           <div class="bg-white p-6 rounded-lg shadow-lg">
+                               <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
+                                   <h3 class="font-bold text-gray-700">Itens no Almoxarifado</h3>
+                                   <div class="flex gap-2 w-full sm:w-auto">
+                                       <select id="category-filter-select" class="p-2 border border-gray-300 rounded-md bg-white w-full">
+                                           <option value="">Todas as Categorias</option>
+                                       </select>
+                                       <input type="text" id="item-filter" placeholder="Buscar item..." class="p-2 border border-gray-300 rounded-md w-full">
+                                   </div>
+                               </div>
+                               <div id="itens-accordion-container" class="space-y-3"></div>
+                               <p id="itens-placeholder" class="text-center py-8 text-gray-400 hidden">Nenhum item cadastrado.</p>
+                           </div>
                          </div>
-                         <div class="bg-white p-6 rounded-lg shadow-lg">
-                             <div class="flex flex-col sm:flex-row justify-between items-center mb-4 gap-4">
-                                 <h3 class="font-bold text-gray-700">Itens no Almoxarifado</h3>
-                                 <div class="flex gap-2 w-full sm:w-auto">
-                                     <select id="category-filter-select" class="p-2 border border-gray-300 rounded-md bg-white w-full">
-                                         <option value="">Todas as Categorias</option>
-                                     </select>
-                                     <input type="text" id="item-filter" placeholder="Buscar item..." class="p-2 border border-gray-300 rounded-md w-full">
-                                 </div>
-                             </div>
-                             <div id="itens-accordion-container" class="space-y-3"></div>
-                             <p id="itens-placeholder" class="text-center py-8 text-gray-400 hidden">Nenhum item cadastrado.</p>
-                         </div>
-                       </div>
                  </div>
             </div>
 
@@ -351,34 +378,34 @@
             <div id="tab-content-admin" class="tab-pane hidden">
                  <h2 class="text-2xl font-semibold text-gray-700 mb-6">Painel do Administrador</h2>
                  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                       <div class="md:col-span-1">
-                         <div class="bg-white p-6 rounded-lg shadow-lg">
-                             <h3 class="font-bold mb-4">Adicionar Operador</h3>
-                             <form id="add-operator-form">
-                                 <div class="space-y-4">
-                                     <input type="text" id="operator-new-name" placeholder="Nome do Operador" class="w-full p-2 border border-gray-300 rounded-md" required>
-                                     <input type="text" id="operator-new-registration" placeholder="Matrícula" class="w-full p-2 border border-gray-300 rounded-md" required>
-                                     <fieldset class="mt-4 border p-3 rounded-md">
-                                         <legend class="text-sm font-semibold px-1">Permissões</legend>
-                                         <div class="space-y-2 text-sm">
-                                             <label class="flex items-center gap-2"><input type="checkbox" id="perm-manage-retiradas" class="h-4 w-4 rounded border-gray-300" checked> Gerenciar Retiradas</label>
-                                             <label class="flex items-center gap-2"><input type="checkbox" id="perm-manage-items" class="h-4 w-4 rounded border-gray-300"> Gerenciar Itens/Categorias</label>
-                                             <label class="flex items-center gap-2"><input type="checkbox" id="perm-manage-professors" class="h-4 w-4 rounded border-gray-300"> Gerenciar Professores</label>
-                                             <label class="flex items-center gap-2"><input type="checkbox" id="perm-generate-reports" class="h-4 w-4 rounded border-gray-300"> Gerar Relatórios</label>
-                                         </div>
-                                     </fieldset>
-                                 </div>
-                                 <button type="submit" class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Adicionar Operador</button>
-                             </form>
+                         <div class="md:col-span-1">
+                           <div class="bg-white p-6 rounded-lg shadow-lg">
+                               <h3 class="font-bold mb-4">Adicionar Operador</h3>
+                               <form id="add-operator-form">
+                                   <div class="space-y-4">
+                                       <input type="text" id="operator-new-name" placeholder="Nome do Operador" class="w-full p-2 border border-gray-300 rounded-md" required>
+                                       <input type="text" id="operator-new-registration" placeholder="Matrícula" class="w-full p-2 border border-gray-300 rounded-md" required>
+                                       <fieldset class="mt-4 border p-3 rounded-md">
+                                           <legend class="text-sm font-semibold px-1">Permissões</legend>
+                                           <div class="space-y-2 text-sm">
+                                               <label class="flex items-center gap-2"><input type="checkbox" id="perm-manage-retiradas" class="h-4 w-4 rounded border-gray-300" checked> Gerenciar Retiradas</label>
+                                               <label class="flex items-center gap-2"><input type="checkbox" id="perm-manage-items" class="h-4 w-4 rounded border-gray-300"> Gerenciar Itens/Categorias</label>
+                                               <label class="flex items-center gap-2"><input type="checkbox" id="perm-manage-professors" class="h-4 w-4 rounded border-gray-300"> Gerenciar Colaboradores</label>
+                                               <label class="flex items-center gap-2"><input type="checkbox" id="perm-generate-reports" class="h-4 w-4 rounded border-gray-300"> Gerar Relatórios</label>
+                                           </div>
+                                       </fieldset>
+                                   </div>
+                                   <button type="submit" class="mt-4 w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg transition-colors">Adicionar Operador</button>
+                               </form>
+                           </div>
                          </div>
-                       </div>
-                       <div class="md:col-span-2">
-                         <div class="bg-white p-6 rounded-lg shadow-lg">
-                             <h3 class="font-bold mb-4">Operadores Cadastrados</h3>
-                             <ul id="operators-list" class="space-y-2"></ul>
-                              <p id="operators-placeholder" class="text-center py-8 text-gray-400">Nenhum operador cadastrado.</p>
+                         <div class="md:col-span-2">
+                           <div class="bg-white p-6 rounded-lg shadow-lg">
+                               <h3 class="font-bold mb-4">Operadores Cadastrados</h3>
+                               <ul id="operators-list" class="space-y-2"></ul>
+                                <p id="operators-placeholder" class="text-center py-8 text-gray-400">Nenhum operador cadastrado.</p>
+                           </div>
                          </div>
-                       </div>
                  </div>
             </div>
 
@@ -394,25 +421,27 @@
                 <h2 id="details-modal-title" class="text-2xl font-bold">Detalhes</h2>
                 <button id="close-details-modal-btn" class="text-gray-500 hover:text-gray-800 text-2xl">&times;</button>
             </div>
-            <div id="details-modal-content" class="max-h-[60vh] overflow-y-auto">
-                <!-- Content will be injected here -->
-            </div>
+            <div id="details-modal-content" class="max-h-[60vh] overflow-y-auto"></div>
         </div>
     </div>
     <div id="edit-professor-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-50">
         <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-lg transform transition-all -translate-y-full">
-             <h2 class="text-2xl font-bold mb-6">Editar Professor</h2>
+             <h2 class="text-2xl font-bold mb-6">Editar Colaborador</h2>
              <form id="edit-professor-form">
                  <input type="hidden" id="edit-professor-id">
                  <div class="space-y-4">
                      <div>
-                         <label for="edit-professor-name" class="block text-sm font-medium text-gray-700">Nome do Professor</label>
+                         <label for="edit-professor-name" class="block text-sm font-medium text-gray-700">Nome do Colaborador</label>
                          <input type="text" id="edit-professor-name" class="mt-1 p-2 w-full border border-gray-300 rounded-md" required>
                      </div>
                      <div>
                          <label for="edit-professor-matricula" class="block text-sm font-medium text-gray-700">Matrícula</label>
                          <input type="text" id="edit-professor-matricula" class="mt-1 p-2 w-full border border-gray-300 rounded-md" required>
                      </div>
+                     <label id="edit-supervisor-checkbox-container" class="flex items-center gap-2 text-sm font-medium text-gray-700 pt-2">
+                         <input type="checkbox" id="edit-professor-is-supervisor" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                         É Supervisor?
+                     </label>
                  </div>
                  <div class="flex justify-end gap-4 mt-8">
                      <button type="button" id="cancel-edit-professor-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
@@ -423,17 +452,17 @@
     </div>
     <div id="quick-add-professor-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-[60]">
         <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-sm">
-            <h3 class="text-lg font-bold mb-4">Adicionar Novo Professor</h3>
+            <h3 class="text-lg font-bold mb-4">Adicionar Novo Colaborador</h3>
             <form id="quick-add-professor-form" class="space-y-3">
                 <div>
-                    <label class="block text-sm font-medium text-gray-700">Nome do Professor</label>
+                    <label class="block text-sm font-medium text-gray-700">Nome do Colaborador</label>
                     <input type="text" id="quick-professor-name" class="mt-1 p-2 w-full border border-gray-300 rounded-md bg-gray-100" disabled>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-gray-700">Matrícula</label>
                     <input type="text" id="quick-professor-matricula" class="mt-1 p-2 w-full border border-gray-300 rounded-md" required>
                 </div>
-                <p class="text-xs text-gray-500 mt-2">Deseja adicionar este professor e matrícula ao sistema?</p>
+                <p class="text-xs text-gray-500 mt-2">Deseja adicionar este colaborador e matrícula ao sistema?</p>
                 <div class="flex justify-end gap-4 pt-4">
                     <button type="button" id="cancel-quick-add-prof-btn" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded-lg">Cancelar</button>
                     <button type="submit" class="bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-4 rounded-lg">Adicionar</button>
@@ -464,7 +493,7 @@
     </div>
     <div id="login-modal" class="modal fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center p-4 hidden z-50">
         <div class="bg-white rounded-lg shadow-2xl p-6 w-full max-w-sm">
-            <h3 class="text-lg font-bold mb-4">Login do Operador</h3>
+            <h3 class="text-lg font-bold mb-4">Login</h3>
             <form id="login-form">
                 <div class="space-y-4">
                     <input type="text" id="login-name" placeholder="Nome de usuário" class="w-full p-2 border border-gray-300 rounded-md" required>
@@ -496,7 +525,7 @@
                         <div class="space-y-2 text-sm">
                             <label class="flex items-center gap-2"><input type="checkbox" id="edit-perm-manage-retiradas" class="h-4 w-4 rounded border-gray-300"> Gerenciar Retiradas</label>
                             <label class="flex items-center gap-2"><input type="checkbox" id="edit-perm-manage-items" class="h-4 w-4 rounded border-gray-300"> Gerenciar Itens/Categorias</label>
-                            <label class="flex items-center gap-2"><input type="checkbox" id="edit-perm-manage-professors" class="h-4 w-4 rounded border-gray-300"> Gerenciar Professores</label>
+                            <label class="flex items-center gap-2"><input type="checkbox" id="edit-perm-manage-professors" class="h-4 w-4 rounded border-gray-300"> Gerenciar Colaboradores</label>
                             <label class="flex items-center gap-2"><input type="checkbox" id="edit-perm-generate-reports" class="h-4 w-4 rounded border-gray-300"> Gerar Relatórios</label>
                         </div>
                     </fieldset>
@@ -565,9 +594,9 @@
                     <input type="hidden" id="solicitacao-id-carrier">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                         <div class="relative">
-                            <label for="retirada-professor-input" class="block text-sm font-medium text-gray-700">Professor</label>
-                            <input list="professores-datalist" id="retirada-professor-input" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm" required placeholder="Digite ou selecione um professor...">
-                            <button type="button" id="quick-add-professor-btn" class="hidden absolute right-2 bottom-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full h-6 w-6 flex items-center justify-center" title="Adicionar Novo Professor"><i class="fas fa-plus"></i></button>
+                            <label for="retirada-professor-input" class="block text-sm font-medium text-gray-700">Colaborador</label>
+                            <input list="professores-datalist" id="retirada-professor-input" class="mt-1 block w-full py-2 px-3 border border-gray-300 bg-white rounded-md shadow-sm" required placeholder="Digite ou selecione um colaborador...">
+                            <button type="button" id="quick-add-professor-btn" class="hidden absolute right-2 bottom-2 bg-blue-500 hover:bg-blue-600 text-white rounded-full h-6 w-6 flex items-center justify-center" title="Adicionar Novo Colaborador"><i class="fas fa-plus"></i></button>
                             <input type="hidden" id="retirada-professor-id">
                         </div>
                         <div>
@@ -576,9 +605,7 @@
                         </div>
                     </div>
                     <h3 class="font-semibold mt-6 mb-2">Itens Selecionados</h3>
-                    <div id="retirada-itens-list" class="space-y-2 max-h-32 overflow-y-auto p-2 bg-gray-100 rounded-md border">
-                        <!-- Selected items will be populated here -->
-                    </div>
+                    <div id="retirada-itens-list" class="space-y-2 max-h-32 overflow-y-auto p-2 bg-gray-100 rounded-md border"></div>
                     <p id="retirada-itens-placeholder" class="text-sm text-center text-gray-500 py-4">Nenhum item selecionado.</p>
                 </div>
 
@@ -587,9 +614,7 @@
                         <h3 class="font-semibold text-gray-700">Adicionar Itens do Estoque</h3>
                         <input type="text" id="modal-item-filter" placeholder="Buscar item..." class="w-full p-2 border border-gray-300 rounded-md mt-2">
                     </div>
-                    <div id="modal-itens-accordion-container" class="p-4 space-y-3 overflow-y-auto flex-grow">
-                        <!-- Accordion will be rendered here -->
-                    </div>
+                    <div id="modal-itens-accordion-container" class="p-4 space-y-3 overflow-y-auto flex-grow"></div>
                 </div>
                 
                 <div class="flex justify-end gap-4 mt-8 flex-shrink-0">
@@ -603,17 +628,17 @@
         <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-2xl transform transition-all -translate-y-full">
              <h2 class="text-2xl font-bold mb-6">Registrar Devolução</h2>
              <form id="devolucao-form">
-                <input type="hidden" id="devolucao-id">
-                <p class="mb-4">Professor: <strong id="devolucao-professor-name"></strong></p>
-                <div id="devolucao-itens-list" class="space-y-4"></div>
-                <div class="mt-6">
-                    <label for="devolucao-observacao" class="block text-sm font-medium text-gray-700">Observação (para devoluções parciais)</label>
-                    <textarea id="devolucao-observacao" rows="3" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Ex: Um item foi danificado."></textarea>
-                </div>
-                <div class="flex justify-end gap-4 mt-8">
-                    <button type="button" id="cancel-devolucao-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
-                    <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Confirmar Devolução</button>
-                </div>
+                 <input type="hidden" id="devolucao-id">
+                 <p class="mb-4">Colaborador: <strong id="devolucao-professor-name"></strong></p>
+                 <div id="devolucao-itens-list" class="space-y-4"></div>
+                 <div class="mt-6">
+                     <label for="devolucao-observacao" class="block text-sm font-medium text-gray-700">Observação (para devoluções parciais)</label>
+                     <textarea id="devolucao-observacao" rows="3" class="mt-1 block w-full p-2 border border-gray-300 rounded-md" placeholder="Ex: Um item foi danificado."></textarea>
+                 </div>
+                 <div class="flex justify-end gap-4 mt-8">
+                     <button type="button" id="cancel-devolucao-btn" class="bg-gray-500 hover:bg-gray-600 text-white font-bold py-2 px-4 rounded-lg">Cancelar</button>
+                     <button type="submit" class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded-lg">Confirmar Devolução</button>
+                 </div>
              </form>
         </div>
     </div>
@@ -655,7 +680,7 @@
         
         let localProfessores = [], localItens = [], localCategories = [], allRetiradas = [], auditLog = [], localOperators = [], localSolicitacoes = [], localPurchaseRequests = [];
         let currentRetirada = null;
-        let currentUser = { role: 'viewer', name: 'Nenhum', permissions: {} };
+        let currentUser = { role: 'viewer', name: 'Nenhum', permissions: {}, isSupervisor: false };
         let topItemsChart, topProfessorsChart;
         let activeItemInputForQuickAdd = null;
         
@@ -666,11 +691,7 @@
 
         function normalizeString(str) {
             if (!str) return '';
-            return str
-                .toString()
-                .toLowerCase()
-                .normalize("NFD")
-                .replace(/[\u0300-\u036f]/g, "");
+            return str.toString().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
         }
         
         function openModal(modal) {
@@ -741,9 +762,14 @@
             const tabsNavigation = document.getElementById('tabs-navigation');
             const tabsContent = document.getElementById('tabs-content');
             const loggedOutView = document.getElementById('logged-out-view');
+            const supervisorBadge = document.getElementById('supervisor-badge');
+            const approvalsTabBtn = document.getElementById('approvals-tab-btn');
+            const supervisorCheckboxContainer = document.getElementById('supervisor-checkbox-container');
+            const editSupervisorCheckboxContainer = document.getElementById('edit-supervisor-checkbox-container');
 
             const isAdmin = currentUser.role === 'admin';
             const isOperator = currentUser.role === 'operator';
+            const isSupervisor = currentUser.isSupervisor || isAdmin;
             const permissions = currentUser.permissions || {};
 
             const isLoggedIn = isAdmin || isOperator;
@@ -751,15 +777,24 @@
             operatorInfo.classList.toggle('hidden', !isLoggedIn);
             topBar.classList.toggle('hidden', !isLoggedIn);
             operatorNameEl.textContent = currentUser.name;
-
+            supervisorBadge.classList.toggle('hidden', !isSupervisor);
+            
             tabsNavigation.classList.toggle('hidden', !isLoggedIn);
             tabsContent.classList.toggle('hidden', !isLoggedIn);
             loggedOutView.classList.toggle('hidden', isLoggedIn);
 
             adminTabBtn.classList.toggle('hidden', !isAdmin);
+            approvalsTabBtn.classList.toggle('hidden', !isSupervisor);
             document.getElementById('clear-history-btn').classList.toggle('hidden', !isAdmin);
+            
+            //-- NOVO: Apenas admin pode definir supervisor --//
+            supervisorCheckboxContainer.classList.toggle('hidden', !isAdmin);
+            editSupervisorCheckboxContainer.classList.toggle('hidden', !isAdmin);
 
             if (!isAdmin && document.querySelector('.tab-button[data-tab="admin"].active')) {
+                document.querySelector('.tab-button[data-tab="dashboard"]').click();
+            }
+            if (!isSupervisor && document.querySelector('.tab-button[data-tab="approvals"].active')) {
                 document.querySelector('.tab-button[data-tab="dashboard"]').click();
             }
 
@@ -794,11 +829,14 @@
                 const li = document.createElement('li');
                 li.className = 'flex justify-between items-center p-3 bg-gray-50 rounded-lg';
                 li.dataset.id = prof.id;
-                li.dataset.name = prof.name;
-                li.dataset.matricula = prof.matricula;
+                
+                const supervisorIcon = prof.isSupervisor 
+                    ? `<i class="fas fa-user-tie text-purple-600 ml-2" title="Supervisor"></i>` 
+                    : '';
+
                 li.innerHTML = `
                     <div>
-                        <span class="font-medium">${prof.name}</span>
+                        <span class="font-medium">${prof.name}${supervisorIcon}</span>
                         <span class="text-sm text-gray-500 ml-2">(Matrícula: ${prof.matricula})</span>
                     </div>
                     <div class="actions">
@@ -822,7 +860,7 @@
                 const permsHtml = `
                     <i class="fas ${perms.canManageRetiradas ? 'fa-dolly text-green-500' : 'fa-dolly text-gray-300'}" title="Gerenciar Retiradas"></i>
                     <i class="fas ${perms.canManageItems ? 'fa-box-open text-green-500' : 'fa-box-open text-gray-300'} ml-2" title="Gerenciar Itens"></i>
-                    <i class="fas ${perms.canManageProfessors ? 'fa-chalkboard-teacher text-green-500' : 'fa-chalkboard-teacher text-gray-300'} ml-2" title="Gerenciar Professores"></i>
+                    <i class="fas ${perms.canManageProfessors ? 'fa-users text-green-500' : 'fa-users text-gray-300'} ml-2" title="Gerenciar Colaboradores"></i>
                     <i class="fas ${perms.canGenerateReports ? 'fa-file-pdf text-green-500' : 'fa-file-pdf text-gray-300'} ml-2" title="Gerar Relatórios"></i>
                 `;
                 li.innerHTML = `
@@ -1021,8 +1059,19 @@
                     .sort((a, b) => (statusOrder[a.status] || 99) - (statusOrder[b.status] || 99))
                     .forEach(retirada => {
                         const retiradaDiv = document.createElement('div');
-                        retiradaDiv.className = 'p-4 bg-white rounded-md shadow-sm border';
                         
+                        let cardBgClass = 'bg-white';
+                        let cardBorderClass = 'border-gray-200';
+
+                        if (retirada.status === 'Pendente' || retirada.status === 'Devolvido Parcialmente') {
+                            cardBgClass = 'bg-red-50';
+                            cardBorderClass = 'border-red-200';
+                        } else if (retirada.status === 'Devolvido Totalmente') {
+                            cardBgClass = 'bg-green-50';
+                            cardBorderClass = 'border-green-200';
+                        }
+                        retiradaDiv.className = `p-4 ${cardBgClass} rounded-md shadow-sm border ${cardBorderClass}`;
+
                         const statusInfo = {'Pendente': { text: 'Pendente', color: 'red' }, 'Devolvido Parcialmente': { text: 'Dev. Parcial', color: 'yellow' }, 'Devolvido Totalmente': { text: 'Devolvido', color: 'green' }, 'Concluído com Pendência': { text: 'Finalizado', color: 'teal' }};
                         const currentStatus = statusInfo[retirada.status] || { text: 'Desconhecido', color: 'gray' };
                         const itemsHtml = retirada.itens.map(item => `<div>- ${item.quantidade}x ${item.itemName} (Dev: ${item.quantidadeDevolvida || 0})</div>`).join('');
@@ -1105,13 +1154,13 @@
             if (type === 'professor') {
                 title.textContent = `Histórico de: ${name}`;
                 const professorRetiradas = allRetiradas.filter(r => r.professorId === id);
-                 let tableHtml = `<p class="text-center text-gray-500">Nenhuma retirada encontrada para este professor.</p>`;
+                 let tableHtml = `<p class="text-center text-gray-500">Nenhuma retirada encontrada para este colaborador.</p>`;
                 if (professorRetiradas.length > 0) {
-                     tableHtml = `<table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Item</th><th class="px-6 py-3">Qtd</th><th class="px-6 py-3">Data</th><th class="px-6 py-3">Status</th></tr></thead><tbody>`;
-                     professorRetiradas.forEach(r => {
-                         r.itens.forEach(item => { tableHtml += `<tr class="border-b"><td class="px-6 py-4">${item.itemName}</td><td class="px-6 py-4">${item.quantidade}</td><td class="px-6 py-4">${new Date(r.dataRetirada+'T00:00:00').toLocaleDateString('pt-BR')}</td><td class="px-6 py-4">${r.status}</td></tr>`; });
-                    });
-                     tableHtml += `</tbody></table>`;
+                       tableHtml = `<table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Item</th><th class="px-6 py-3">Qtd</th><th class="px-6 py-3">Data</th><th class="px-6 py-3">Status</th></tr></thead><tbody>`;
+                       professorRetiradas.forEach(r => {
+                           r.itens.forEach(item => { tableHtml += `<tr class="border-b"><td class="px-6 py-4">${item.itemName}</td><td class="px-6 py-4">${item.quantidade}</td><td class="px-6 py-4">${new Date(r.dataRetirada+'T00:00:00').toLocaleDateString('pt-BR')}</td><td class="px-6 py-4">${r.status}</td></tr>`; });
+                });
+                       tableHtml += `</tbody></table>`;
                 }
                 content.innerHTML = tableHtml;
 
@@ -1120,11 +1169,11 @@
                  const itemRetiradas = allRetiradas.filter(r => r.itens.some(i => i.itemId === id));
                  let tableHtml = `<p class="text-center text-gray-500">Nenhuma retirada encontrada para este item.</p>`;
                  if (itemRetiradas.length > 0) {
-                     tableHtml = `<table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Professor</th><th class="px-6 py-3">Qtd</th><th class="px-6 py-3">Data</th><th class="px-6 py-3">Status</th></tr></thead><tbody>`;
-                        itemRetiradas.forEach(r => {
+                       tableHtml = `<table class="w-full text-sm text-left text-gray-500"><thead class="text-xs text-gray-700 uppercase bg-gray-50"><tr><th class="px-6 py-3">Colaborador</th><th class="px-6 py-3">Qtd</th><th class="px-6 py-3">Data</th><th class="px-6 py-3">Status</th></tr></thead><tbody>`;
+                         itemRetiradas.forEach(r => {
                              r.itens.filter(i => i.itemId === id).forEach(item => { tableHtml += `<tr class="border-b"><td class="px-6 py-4">${r.professorName}</td><td class="px-6 py-4">${item.quantidade}</td><td class="px-6 py-4">${new Date(r.dataRetirada+'T00:00:00').toLocaleDateString('pt-BR')}</td><td class="px-6 py-4">${r.status}</td></tr>`; });
-                        });
-                     tableHtml += `</tbody></table>`;
+                         });
+                       tableHtml += `</tbody></table>`;
                  }
                  content.innerHTML = tableHtml;
             }
@@ -1186,13 +1235,66 @@
                 tbody.appendChild(tr);
             });
         }
+        
+        function updateApprovalsBadge() {
+            const badge = document.getElementById('approvals-badge');
+            const pendingCount = localPurchaseRequests.filter(s => s.status === 'Pendente de Aprovação').length;
+            
+            if (pendingCount > 0) {
+                badge.textContent = pendingCount;
+                badge.classList.remove('hidden');
+            } else {
+                badge.classList.add('hidden');
+            }
+        }
 
-        // =================================================================
-        // FUNÇÕES CORRIGIDAS / ADICIONADAS
-        // =================================================================
+        function renderApprovals() {
+            const tbody = document.getElementById('approvals-table-body');
+            const placeholder = document.getElementById('approvals-placeholder');
+            tbody.innerHTML = '';
+
+            const pendingApproval = localPurchaseRequests
+                .filter(s => s.status === 'Pendente de Aprovação')
+                .sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
+
+            placeholder.classList.toggle('hidden', pendingApproval.length > 0);
+
+            pendingApproval.forEach(request => {
+                const tr = document.createElement('tr');
+                //-- ALTERADO: Adiciona classe e data attribute para o clique --//
+                tr.className = 'border-b hover:bg-gray-50 cursor-pointer request-row';
+                tr.dataset.requestId = request.id;
+                
+                const linkHtml = request.link 
+                    ? `<a href="${request.link}" target="_blank" class="text-blue-500 hover:underline"><i class="fas fa-link"></i> Ver Link</a>` 
+                    : '<span>N/A</span>';
+
+                const actionsHtml = `
+                    <div class="flex items-center justify-center gap-2">
+                        <button data-id="${request.id}" data-action="approve" class="approval-action-btn bg-green-500 hover:bg-green-600 text-white font-bold py-1 px-3 rounded-lg text-xs" title="Aprovar Pedido">
+                            <i class="fas fa-check"></i> Aprovar
+                        </button>
+                        <button data-id="${request.id}" data-action="reject" class="approval-action-btn bg-red-500 hover:bg-red-600 text-white font-bold py-1 px-3 rounded-lg text-xs" title="Rejeitar Pedido">
+                            <i class="fas fa-times"></i> Rejeitar
+                        </button>
+                    </div>
+                `;
+
+                tr.innerHTML = `
+                    <td class="px-4 py-4 text-gray-600 whitespace-nowrap">${request.timestamp?.toDate().toLocaleDateString('pt-BR') || 'N/A'}</td>
+                    <td class="px-4 py-4 font-medium">${request.solicitanteName || 'N/A'}</td>
+                    <td class="px-4 py-4 font-semibold text-gray-800">${request.itemName || 'N/A'}</td>
+                    <td class="px-4 py-4 text-sm text-gray-600 max-w-xs truncate" title="${request.itemDescricao || ''}">${request.itemDescricao || 'N/A'}</td>
+                    <td class="px-4 py-4 text-sm">${linkHtml}</td>
+                    <td class="px-4 py-4 text-center">${actionsHtml}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+        
         function updatePurchaseRequestsBadge() {
             const badge = document.getElementById('compras-badge');
-            const pendingCount = localPurchaseRequests.filter(s => s.status !== 'Entregue' && s.status !== 'Rejeitada').length;
+            const pendingCount = localPurchaseRequests.filter(s => s.status === 'Aprovado' || s.status === 'Em Análise' || s.status === 'Comprado').length;
             
             if (pendingCount > 0) {
                 badge.textContent = pendingCount;
@@ -1208,17 +1310,17 @@
             tbody.innerHTML = '';
 
             const activeRequests = localPurchaseRequests
-                .filter(s => s.status !== 'Entregue' && s.status !== 'Rejeitada')
+                .filter(s => s.status === 'Aprovado' || s.status === 'Em Análise' || s.status === 'Comprado')
                 .sort((a, b) => (a.timestamp?.toMillis() || 0) - (b.timestamp?.toMillis() || 0));
 
             placeholder.classList.toggle('hidden', activeRequests.length > 0);
 
             const statusConfig = {
-                'Pendente': { text: 'Pendente', color: 'gray' },
+                'Aprovado': { text: 'Aprovado', color: 'green' },
                 'Em Análise': { text: 'Em Análise', color: 'yellow' },
                 'Comprado': { text: 'Comprado', color: 'blue' },
-                'Entregue': { text: 'Entregue', color: 'green' },
-                'Rejeitada': { text: 'Recusado', color: 'red' }
+                'Entregue': { text: 'Entregue', color: 'gray' },
+                'Rejeitada': { text: 'Rejeitado', color: 'red' }
             };
 
             activeRequests.forEach(request => {
@@ -1226,7 +1328,9 @@
                 const statusInfo = statusConfig[currentStatus] || { text: currentStatus, color: 'gray' };
 
                 const tr = document.createElement('tr');
-                tr.className = 'border-b hover:bg-gray-50';
+                //-- ALTERADO: Adiciona classe e data attribute para o clique --//
+                tr.className = 'border-b hover:bg-gray-50 cursor-pointer request-row';
+                tr.dataset.requestId = request.id;
                 
                 const linkHtml = request.link 
                     ? `<a href="${request.link}" target="_blank" class="text-blue-500 hover:underline"><i class="fas fa-link"></i> Ver Link</a>` 
@@ -1237,7 +1341,6 @@
                         <button data-id="${request.id}" data-status="Em Análise" class="status-btn bg-yellow-100 text-yellow-800 hover:bg-yellow-200 font-semibold py-1 px-2 rounded-md text-xs" title="Marcar como 'Em Análise'">Análise</button>
                         <button data-id="${request.id}" data-status="Comprado" class="status-btn bg-blue-100 text-blue-800 hover:bg-blue-200 font-semibold py-1 px-2 rounded-md text-xs" title="Marcar como 'Comprado'">Comprado</button>
                         <button data-id="${request.id}" data-status="Entregue" class="status-btn bg-green-100 text-green-800 hover:bg-green-200 font-semibold py-1 px-2 rounded-md text-xs" title="Marcar como 'Entregue'">Entregue</button>
-                        <button data-id="${request.id}" data-status="Rejeitada" class="status-btn bg-red-100 text-red-800 hover:bg-red-200 font-semibold py-1 px-2 rounded-md text-xs" title="Marcar como 'Recusado'">Recusado</button>
                     </div>
                 `;
 
@@ -1245,7 +1348,7 @@
                     <td class="px-4 py-4 text-gray-600 whitespace-nowrap">${request.timestamp?.toDate().toLocaleDateString('pt-BR') || 'N/A'}</td>
                     <td class="px-4 py-4 font-medium">${request.solicitanteName || 'N/A'}</td>
                     <td class="px-4 py-4 font-semibold text-gray-800">${request.itemName || 'N/A'}</td>
-                    <td class="px-4 py-4 text-sm text-gray-600 max-w-xs truncate" title="${request.description || ''}">${request.description || 'N/A'}</td>
+                    <td class="px-4 py-4 text-sm text-gray-600 max-w-xs truncate" title="${request.itemDescricao || ''}">${request.itemDescricao || 'N/A'}</td>
                     <td class="px-4 py-4 text-sm">${linkHtml}</td>
                     <td class="px-4 py-4 text-center">
                         <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-${statusInfo.color}-100 text-${statusInfo.color}-800">${statusInfo.text}</span>
@@ -1257,7 +1360,6 @@
                 tbody.appendChild(tr);
             });
         }
-        // =================================================================
         
         function createItemSelectionRow(item) {
             const list = document.getElementById('retirada-itens-list');
@@ -1360,11 +1462,13 @@
                 renderSolicitacoes();
                 updateSolicitacoesBadge();
             });
-            // CORREÇÃO: Apontando para a coleção correta 'solicitacoes_compra'
+            
             unsubscribePurchaseRequests = attach('solicitacoes_compra', data => {
                 localPurchaseRequests = data;
                 renderPurchaseRequests();
                 updatePurchaseRequestsBadge();
+                renderApprovals();
+                updateApprovalsBadge();
             });
         }
 
@@ -1398,15 +1502,15 @@
             }
         }
 
-        async function addProfessor(name, matricula) { 
+        async function addProfessor(name, matricula, isSupervisor) { 
             try {
-                const docRef = await addDoc(getCollectionRef('professores'), { name, matricula }); 
-                logAction('PROFESSOR_CRIADO', `Professor "${name}" (Mat: ${matricula}) foi adicionado.`); 
-                showToast(`Professor "${name}" adicionado.`, 'success'); 
-                return { id: docRef.id, name, matricula };
+                const docRef = await addDoc(getCollectionRef('professores'), { name, matricula, isSupervisor }); 
+                logAction('COLABORADOR_CRIADO', `Colaborador "${name}" (Mat: ${matricula}) foi adicionado.`); 
+                showToast(`Colaborador "${name}" adicionado.`, 'success'); 
+                return { id: docRef.id, name, matricula, isSupervisor };
             } catch(e) { 
-                console.error("Erro ao adicionar professor:", e); 
-                showToast("Erro ao salvar o professor.", 'error'); 
+                console.error("Erro ao adicionar colaborador:", e); 
+                showToast("Erro ao salvar o colaborador.", 'error'); 
                 return null;
             }
         }
@@ -1414,11 +1518,11 @@
         async function updateProfessor(id, data) {
             try {
                 await updateDoc(getDocRef('professores', id), data);
-                logAction('PROFESSOR_ALTERADO', `Professor "${data.name}" (Mat: ${data.matricula}) foi atualizado.`);
-                showToast(`Professor "${data.name}" atualizado.`, 'success');
+                logAction('COLABORADOR_ALTERADO', `Colaborador "${data.name}" (Mat: ${data.matricula}) foi atualizado.`);
+                showToast(`Colaborador "${data.name}" atualizado.`, 'success');
             } catch (e) {
-                console.error("Erro ao atualizar professor:", e);
-                showToast("Erro ao atualizar o professor.", 'error');
+                console.error("Erro ao atualizar colaborador:", e);
+                showToast("Erro ao atualizar o colaborador.", 'error');
             }
         }
 
@@ -1426,7 +1530,7 @@
         async function updateOperator(id, data) { try { await updateDoc(getDocRef('operators', id), data); logAction('OPERADOR_ALTERADO', `Operador "${data.name}" foi atualizado.`); showToast(`Operador "${data.name}" atualizado.`, 'success'); } catch (e) { console.error("Erro ao atualizar operador:", e); showToast("Erro ao atualizar o operador.", 'error'); } }
         async function updateItem(id, newData) { try { await updateDoc(getDocRef('itens', id), newData); logAction('ITEM_ALTERADO', `Item "${newData.name}" atualizado.`); showToast(`Item "${newData.name}" atualizado.`, 'success'); } catch (e) { console.error("Erro ao atualizar item:", e); showToast("Erro ao atualizar o item.", 'error'); } }
         async function addCategory(name) { try { await addDoc(getCollectionRef('categories'), { name }); logAction('CATEGORIA_CRIADA', `Categoria "${name}" criada.`); showToast(`Categoria "${name}" criada.`, 'success'); } catch(e) { console.error("Erro ao adicionar categoria:", e); showToast("Erro ao salvar a categoria.", 'error'); }}
-        async function deleteProfessor(id, name) { if (allRetiradas.some(r => r.professorId === id)) { showMessageModal('Ação Bloqueada', `"${name}" não pode ser excluído pois possui retiradas no histórico.`); return; } showConfirmModal('Excluir Professor', `Excluir "${name}"?`, async () => { try { await deleteDoc(getDocRef('professores', id)); logAction('PROFESSOR_EXCLUIDO', `Professor "${name}" foi excluído.`); showToast(`Professor "${name}" excluído.`, 'success'); } catch (e) { console.error("Erro ao excluir professor:", e); showToast("Erro ao excluir.", 'error'); } }); }
+        async function deleteProfessor(id, name) { if (allRetiradas.some(r => r.professorId === id)) { showMessageModal('Ação Bloqueada', `"${name}" não pode ser excluído pois possui retiradas no histórico.`); return; } showConfirmModal('Excluir Colaborador', `Excluir "${name}"?`, async () => { try { await deleteDoc(getDocRef('professores', id)); logAction('COLABORADOR_EXCLUIDO', `Colaborador "${name}" foi excluído.`); showToast(`Colaborador "${name}" excluído.`, 'success'); } catch (e) { console.error("Erro ao excluir colaborador:", e); showToast("Erro ao excluir.", 'error'); } }); }
         async function deleteItem(id, name) { if (allRetiradas.some(r => r.itens.some(i => i.itemId === id) && r.status !== 'Devolvido Totalmente' && r.status !== 'Concluído com Pendência')) { showMessageModal('Ação Bloqueada', `"${name}" não pode ser excluído pois está em uma retirada ativa.`); return; } showConfirmModal('Excluir Item', `Excluir "${name}"?`, async () => { try { await deleteDoc(getDocRef('itens', id)); logAction('ITEM_EXCLUIDO', `Item "${name}" foi excluído.`); showToast(`Item "${name}" excluído.`, 'success'); } catch(e) { console.error("Erro ao excluir item:", e); showToast("Erro ao excluir.", 'error'); } }); }
         async function deleteCategory(id, name) { showConfirmModal('Excluir Categoria', `Excluir "${name}"?`, async () => { try { await deleteDoc(getDocRef('categories', id)); logAction('CATEGORIA_EXCLUIDA', `Categoria "${name}" excluída.`); showToast(`Categoria excluída.`, 'success'); } catch(e) { console.error("Erro ao excluir categoria:", e); showToast("Erro ao excluir.", 'error'); } }); }
         async function deleteOperator(id, name) { showConfirmModal('Excluir Operador', `Excluir "${name}"?`, async () => { try { await deleteDoc(getDocRef('operators', id)); logAction('OPERADOR_EXCLUIDO', `Operador "${name}" foi excluído.`); showToast(`Operador excluído.`, 'success'); } catch(e) { console.error("Erro ao excluir operador:", e); showToast("Erro ao excluir.", 'error'); } }); }
@@ -1512,7 +1616,7 @@
             docPdf.setFontSize(11); docPdf.setTextColor(100); docPdf.text(`Gerado em: ${new Date().toLocaleDateString('pt-BR')}`, 14, 29);
             const tableData = [];
             
-            document.querySelectorAll('#retiradas-accordion-container .p-4.bg-white').forEach(row => {
+            document.querySelectorAll('#retiradas-accordion-container .p-4').forEach(row => {
                 const professorName = row.querySelector('.font-bold.text-gray-900').textContent;
                 const operatorName = row.querySelector('.text-xs.text-gray-500').textContent.replace('Operador: ', '');
                 const itemsText = Array.from(row.querySelectorAll('.mt-2.text-xs > div')).map(d => d.textContent).join('\n');
@@ -1524,10 +1628,73 @@
                 tableData.push([professorName, itemsText, dateString, operatorName, status, obs]);
             });
 
-            docPdf.autoTable({ startY: 35, head: [['Professor', 'Itens', 'Data', 'Operador', 'Status', 'Observação']], body: tableData, theme: 'striped', headStyles: { fillColor: [41, 128, 185] }, styles: { cellPadding: 2, fontSize: 8 }});
+            docPdf.autoTable({ startY: 35, head: [['Colaborador', 'Itens', 'Data', 'Operador', 'Status', 'Observação']], body: tableData, theme: 'striped', headStyles: { fillColor: [41, 128, 185] }, styles: { cellPadding: 2, fontSize: 8 }});
             docPdf.save(`relatorio_almoxarifado_${new Date().toISOString().slice(0,10)}.pdf`);
         }
         
+        //-- NOVO: Função para mostrar detalhes da solicitação de compra --//
+        function showPurchaseRequestDetails(requestId) {
+            const request = localPurchaseRequests.find(r => r.id === requestId);
+            if (!request) {
+                showToast('Detalhes da solicitação não encontrados.', 'error');
+                return;
+            }
+
+            const statusClasses = { 
+                'Pendente de Aprovação': 'bg-gray-200 text-gray-800',
+                'Aprovado': 'bg-blue-100 text-blue-800',
+                'Rejeitado': 'bg-red-100 text-red-800',
+                'Em Análise': 'bg-yellow-100 text-yellow-800',
+                'Comprado': 'bg-indigo-100 text-indigo-800',
+                'Entregue': 'bg-green-100 text-green-800',
+                'Cancelado': 'bg-gray-200 text-gray-700'
+            };
+
+            const contentHtml = `
+                <div class="space-y-4 text-sm">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <p class="font-semibold text-gray-500">Item Solicitado</p>
+                            <p class="text-lg font-bold text-gray-800">${request.itemName} (Qtd: ${request.quantidade})</p>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <p class="font-semibold text-gray-500">Status Atual</p>
+                            <p class="text-lg font-bold"><span class="px-3 py-1 rounded-full ${statusClasses[request.status] || ''}">${request.status}</span></p>
+                        </div>
+                    </div>
+                    <div class="bg-gray-50 p-3 rounded-md">
+                        <p class="font-semibold text-gray-500">Descrição / Justificativa</p>
+                        <p class="text-gray-700 whitespace-pre-wrap">${request.itemDescricao}</p>
+                    </div>
+                     ${request.link ? `
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <p class="font-semibold text-gray-500">Link de Referência</p>
+                            <a href="${request.link}" target="_blank" class="text-blue-600 hover:underline break-all">${request.link}</a>
+                        </div>` : ''
+                    }
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <p class="font-semibold text-gray-500">Solicitante</p>
+                            <p class="text-gray-700">${request.solicitanteName}</p>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <p class="font-semibold text-gray-500">Data da Solicitação</p>
+                            <p class="text-gray-700">${request.timestamp?.toDate().toLocaleString('pt-BR') || 'N/A'}</p>
+                        </div>
+                        <div class="bg-gray-50 p-3 rounded-md">
+                            <p class="font-semibold text-gray-500">Aprovador</p>
+                            <p class="text-gray-700">${request.aprovador || 'Aguardando'}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            const modal = document.getElementById('details-modal');
+            document.getElementById('details-modal-title').textContent = 'Detalhes do Pedido de Compra';
+            document.getElementById('details-modal-content').innerHTML = contentHtml;
+            openModal(modal);
+        }
+
         document.addEventListener('DOMContentLoaded', async () => {
             retiradasPlaceholder = document.getElementById('retiradas-placeholder');
 
@@ -1543,7 +1710,10 @@
             document.getElementById('main-login-btn').addEventListener('click', () => {
                 onSnapshot(getCollectionRef('operators'), snap => {
                     localOperators = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    openModal(document.getElementById('login-modal'));
+                    onSnapshot(getCollectionRef('professores'), profSnap => {
+                        localProfessores = profSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                        openModal(document.getElementById('login-modal'));
+                    });
                 }, err => {
                     console.error("Could not fetch operators for login:", err);
                     showToast("Erro ao carregar dados de login.", "error");
@@ -1552,12 +1722,13 @@
             
             document.getElementById('cancel-login-btn').addEventListener('click', () => closeModal(document.getElementById('login-modal')));
             document.getElementById('logout-btn').addEventListener('click', () => {
-                currentUser = { role: 'viewer', name: 'Nenhum', permissions: {} };
+                currentUser = { role: 'viewer', name: 'Nenhum', permissions: {}, isSupervisor: false };
                 detachListeners();
                 localProfessores = []; localItens = []; localCategories = []; allRetiradas = []; auditLog = []; localOperators = []; localSolicitacoes = []; localPurchaseRequests = [];
-                renderProfessores([]); renderItens([]); renderCategories([]); renderRetiradas(); renderAuditLog([]); renderOperators([]); renderSolicitacoes(); renderPurchaseRequests();
+                renderProfessores([]); renderItens([]); renderCategories([]); renderRetiradas(); renderAuditLog([]); renderOperators([]); renderSolicitacoes(); renderPurchaseRequests(); renderApprovals();
                 updateSolicitacoesBadge();
                 updatePurchaseRequestsBadge();
+                updateApprovalsBadge();
                 updateUIAccess();
                 showToast('Você saiu do sistema.', 'info');
             });
@@ -1566,13 +1737,15 @@
                 const name = document.getElementById('login-name').value.trim();
                 const registration = document.getElementById('login-registration').value.trim();
                 
+                const professorAsSupervisor = localProfessores.find(p => p.matricula === registration && p.isSupervisor);
+
                 if (name === 'admin' && registration === 'admin') {
-                    currentUser = { role: 'admin', name: 'Admin', permissions: { canManageItems: true, canManageProfessors: true, canGenerateReports: true, canManageRetiradas: true } };
+                    currentUser = { role: 'admin', name: 'Admin', permissions: { canManageItems: true, canManageProfessors: true, canGenerateReports: true, canManageRetiradas: true }, isSupervisor: true };
                     showToast('Bem-vindo, Administrador!', 'success');
                 } else {
                     const operator = localOperators.find(op => op.name === name && op.registration === registration);
                     if (operator) {
-                        currentUser = { role: 'operator', name: operator.name, permissions: operator.permissions || {} };
+                        currentUser = { role: 'operator', name: operator.name, permissions: operator.permissions || {}, isSupervisor: !!(professorAsSupervisor) };
                         showToast(`Bem-vindo, ${operator.name}!`, 'success');
                     } else {
                         showToast('Nome de usuário ou matrícula inválidos.', 'error');
@@ -1589,15 +1762,15 @@
             const tabPanes = document.querySelectorAll('.tab-pane');
             tabs.forEach(tab => tab.addEventListener('click', () => { tabs.forEach(t => t.classList.remove('active')); tab.classList.add('active'); tabPanes.forEach(pane => pane.classList.toggle('hidden', pane.id !== `tab-content-${tab.dataset.tab}`)); if (tab.dataset.tab === 'dashboard') updateDashboard(); }));
 
-            document.getElementById('add-professor-form').addEventListener('submit', (e) => { e.preventDefault(); const nameInput = document.getElementById('professor-name'); const matriculaInput = document.getElementById('professor-matricula'); if(nameInput.value.trim() && matriculaInput.value.trim()){ addProfessor(nameInput.value.trim(), matriculaInput.value.trim()); e.target.reset(); } });
+            document.getElementById('add-professor-form').addEventListener('submit', (e) => { e.preventDefault(); const nameInput = document.getElementById('professor-name'); const matriculaInput = document.getElementById('professor-matricula'); const isSupervisor = document.getElementById('professor-is-supervisor').checked; if(nameInput.value.trim() && matriculaInput.value.trim()){ addProfessor(nameInput.value.trim(), matriculaInput.value.trim(), isSupervisor); e.target.reset(); } });
             document.getElementById('add-item-form').addEventListener('submit', (e) => { e.preventDefault(); const n = document.getElementById('item-name'), q = document.getElementById('item-initial-quantity'), c = document.getElementById('item-category'); if(n.value.trim()&&q.value){ addItem(n.value.trim(), q.value, c.value); n.value=q.value=''; c.value=''; } });
             document.getElementById('add-category-form').addEventListener('submit', (e) => { e.preventDefault(); const i = document.getElementById('category-name'); if(i.value.trim()){ addCategory(i.value.trim()); i.value=''; } });
             document.getElementById('add-operator-form').addEventListener('submit', (e) => { e.preventDefault(); const n = document.getElementById('operator-new-name'); const r = document.getElementById('operator-new-registration'); const perms = { canManageRetiradas: document.getElementById('perm-manage-retiradas').checked, canManageItems: document.getElementById('perm-manage-items').checked, canManageProfessors: document.getElementById('perm-manage-professors').checked, canGenerateReports: document.getElementById('perm-generate-reports').checked }; if (n.value.trim() && r.value.trim()) { addOperator(n.value.trim(), r.value.trim(), perms); e.target.reset(); } });
             document.getElementById('edit-operator-form').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('edit-operator-id').value; const data = { name: document.getElementById('edit-operator-name').value.trim(), registration: document.getElementById('edit-operator-registration').value.trim(), permissions: { canManageRetiradas: document.getElementById('edit-perm-manage-retiradas').checked, canManageItems: document.getElementById('edit-perm-manage-items').checked, canManageProfessors: document.getElementById('edit-perm-manage-professors').checked, canGenerateReports: document.getElementById('edit-perm-generate-reports').checked } }; await updateOperator(id, data); closeModal(document.getElementById('edit-operator-modal')); });
             document.getElementById('edit-item-form').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('edit-item-id').value; const newData = { name: document.getElementById('edit-item-name').value, categoryId: document.getElementById('edit-item-category').value, quantity: Number(document.getElementById('edit-item-quantity').value), totalQuantity: Number(document.getElementById('edit-item-total-quantity').value) }; if(newData.quantity > newData.totalQuantity) { showMessageModal('Erro', 'A qtd. atual não pode ser maior que a total.'); return; } await updateItem(id, newData); closeModal(document.getElementById('edit-item-modal')); });
-            document.getElementById('edit-professor-form').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('edit-professor-id').value; const data = { name: document.getElementById('edit-professor-name').value.trim(), matricula: document.getElementById('edit-professor-matricula').value.trim() }; await updateProfessor(id, data); closeModal(document.getElementById('edit-professor-modal')); });
+            document.getElementById('edit-professor-form').addEventListener('submit', async (e) => { e.preventDefault(); const id = document.getElementById('edit-professor-id').value; const data = { name: document.getElementById('edit-professor-name').value.trim(), matricula: document.getElementById('edit-professor-matricula').value.trim(), isSupervisor: document.getElementById('edit-professor-is-supervisor').checked }; await updateProfessor(id, data); closeModal(document.getElementById('edit-professor-modal')); });
 
-            document.getElementById('professores-list').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); if (!li) return; const id = li.dataset.id; const name = li.dataset.name; const matricula = li.dataset.matricula; const btn = e.target.closest('button'); if (!btn) return; if (btn.classList.contains('delete-professor-btn')) { deleteProfessor(id, name); } else if (btn.classList.contains('history-professor-btn')) { showHistory('professor', id, name); } else if (btn.classList.contains('edit-professor-btn')) { document.getElementById('edit-professor-id').value = id; document.getElementById('edit-professor-name').value = name; document.getElementById('edit-professor-matricula').value = matricula; openModal(document.getElementById('edit-professor-modal')); } });
+            document.getElementById('professores-list').addEventListener('click', (e) => { const li = e.target.closest('li[data-id]'); if (!li) return; const id = li.dataset.id; const prof = localProfessores.find(p => p.id === id); if(!prof) return; const btn = e.target.closest('button'); if (!btn) return; if (btn.classList.contains('delete-professor-btn')) { deleteProfessor(id, prof.name); } else if (btn.classList.contains('history-professor-btn')) { showHistory('professor', id, prof.name); } else if (btn.classList.contains('edit-professor-btn')) { document.getElementById('edit-professor-id').value = id; document.getElementById('edit-professor-name').value = prof.name; document.getElementById('edit-professor-matricula').value = prof.matricula; document.getElementById('edit-professor-is-supervisor').checked = !!prof.isSupervisor; openModal(document.getElementById('edit-professor-modal')); } });
             document.getElementById('operators-list').addEventListener('click', (e) => { const btn = e.target.closest('button'); if (!btn) return; const id = btn.dataset.id; const operator = localOperators.find(op => op.id === id); if (btn.classList.contains('delete-operator-btn')) { deleteOperator(id, operator.name); } if (btn.classList.contains('edit-operator-btn')) { document.getElementById('edit-operator-id').value = id; document.getElementById('edit-operator-name').value = operator.name; document.getElementById('edit-operator-registration').value = operator.registration; const perms = operator.permissions || {}; document.getElementById('edit-perm-manage-retiradas').checked = !!perms.canManageRetiradas; document.getElementById('edit-perm-manage-items').checked = !!perms.canManageItems; document.getElementById('edit-perm-manage-professors').checked = !!perms.canManageProfessors; document.getElementById('edit-perm-generate-reports').checked = !!perms.canGenerateReports; openModal(document.getElementById('edit-operator-modal')); }});
             
             document.getElementById('itens-accordion-container').addEventListener('click', (e) => { 
@@ -1629,7 +1802,7 @@
             document.getElementById('cancel-quick-add-btn').addEventListener('click', () => closeModal(document.getElementById('quick-add-item-modal')));
             document.getElementById('quick-add-item-form').addEventListener('submit', async (e) => { e.preventDefault(); const name = document.getElementById('quick-item-name').value; const quantity = document.getElementById('quick-item-quantity').value; const newItem = await addItem(name, quantity); if (newItem && activeItemInputForQuickAdd) { activeItemInputForQuickAdd.value = `${newItem.name} (Estoque: ${newItem.quantity})`; activeItemInputForQuickAdd.dataset.itemId = newItem.id; activeItemInputForQuickAdd.dataset.itemName = newItem.name; activeItemInputForQuickAdd.dispatchEvent(new Event('input')); } closeModal(document.getElementById('quick-add-item-modal')); e.target.reset(); activeItemInputForQuickAdd = null; });
             document.getElementById('cancel-quick-add-prof-btn').addEventListener('click', () => closeModal(document.getElementById('quick-add-professor-modal')));
-            document.getElementById('quick-add-professor-form').addEventListener('submit', async (e) => { e.preventDefault(); const name = document.getElementById('quick-professor-name').value; const matricula = document.getElementById('quick-professor-matricula').value; const newProfessor = await addProfessor(name, matricula); if (newProfessor) { const professorDatalist = document.getElementById('professores-datalist'); const option = document.createElement('option'); option.value = newProfessor.name; option.dataset.id = newProfessor.id; professorDatalist.appendChild(option); document.getElementById('retirada-professor-input').value = newProfessor.name; document.getElementById('retirada-professor-id').value = newProfessor.id; document.getElementById('retirada-professor-input').dispatchEvent(new Event('input')); } closeModal(document.getElementById('quick-add-professor-modal')); });
+            document.getElementById('quick-add-professor-form').addEventListener('submit', async (e) => { e.preventDefault(); const name = document.getElementById('quick-professor-name').value; const matricula = document.getElementById('quick-professor-matricula').value; const newProfessor = await addProfessor(name, matricula, false); if (newProfessor) { const professorDatalist = document.getElementById('professores-datalist'); const option = document.createElement('option'); option.value = newProfessor.name; option.dataset.id = newProfessor.id; professorDatalist.appendChild(option); document.getElementById('retirada-professor-input').value = newProfessor.name; document.getElementById('retirada-professor-id').value = newProfessor.id; document.getElementById('retirada-professor-input').dispatchEvent(new Event('input')); } closeModal(document.getElementById('quick-add-professor-modal')); });
 
             ['filter-date', 'filter-professor', 'filter-item'].forEach(id => document.getElementById(id).addEventListener('input', () => renderRetiradas()));
             ['item-filter', 'category-filter-select'].forEach(id => document.getElementById(id).addEventListener('input', () => renderItens(localItens)));
@@ -1708,7 +1881,7 @@
                 } 
                 const professorId = document.getElementById('retirada-professor-id').value;
                 const professorName = document.getElementById('retirada-professor-input').value;
-                if (!professorId) { showMessageModal('Erro', 'Professor inválido. Selecione um professor da lista ou adicione um novo.'); return; }
+                if (!professorId) { showMessageModal('Erro', 'Colaborador inválido. Selecione um da lista ou adicione um novo.'); return; }
                 const data = { id: document.getElementById('retirada-id').value, professorName, professorId, dataRetirada: document.getElementById('retirada-date').value, itens: items, status: currentRetirada ? currentRetirada.status : 'Pendente', operator: currentRetirada ? currentRetirada.operator : currentUser.name }; if(data.id && currentRetirada) { data.itens.forEach(ni=>{ const oi=currentRetirada.itens.find(i=>i.itemId===ni.itemId); if(oi) ni.quantidadeDevolvida=oi.quantidadeDevolvida||0; }); } 
                 
                 const solicitacaoIdCarrier = document.getElementById('solicitacao-id-carrier');
@@ -1819,32 +1992,70 @@
                 }
             });
 
-            // =================================================================
-            // EVENT LISTENER ADICIONADO/MODIFICADO
-            // =================================================================
             document.getElementById('compras-table-body').addEventListener('click', async (e) => {
                 const button = e.target.closest('button.status-btn');
-                if (!button) return;
+                if (button) {
+                    const purchaseId = button.dataset.id;
+                    const newStatus = button.dataset.status;
+                    const purchaseRequest = localPurchaseRequests.find(s => s.id === purchaseId);
+                    if (!purchaseRequest) return;
 
-                const purchaseId = button.dataset.id;
-                const newStatus = button.dataset.status;
-                const purchaseRequest = localPurchaseRequests.find(s => s.id === purchaseId);
-                if (!purchaseRequest) return;
+                    const message = `Deseja alterar o status do pedido para "${newStatus}"?`;
+                    showConfirmModal('Confirmar Alteração de Status', message, async () => {
+                        try {
+                            await updateDoc(getDocRef('solicitacoes_compra', purchaseId), { status: newStatus });
+                            logAction('PEDIDO_COMPRA_STATUS_ALTERADO', `Status do pedido de ${purchaseRequest.solicitanteName} alterado para ${newStatus}.`);
+                            showToast(`Status do pedido alterado para ${newStatus}.`, 'success');
+                        } catch (error) {
+                            console.error("Erro ao atualizar status do pedido:", error);
+                            showToast("Erro ao atualizar o status.", 'error');
+                        }
+                    });
+                }
+            });
+            
+            document.getElementById('approvals-table-body').addEventListener('click', async (e) => {
+                const button = e.target.closest('button.approval-action-btn');
+                if (button) {
+                    const purchaseId = button.dataset.id;
+                    const action = button.dataset.action;
+                    const newStatus = action === 'approve' ? 'Aprovado' : 'Rejeitado';
+                    
+                    const purchaseRequest = localPurchaseRequests.find(s => s.id === purchaseId);
+                    if (!purchaseRequest) return;
 
-                const message = `Deseja alterar o status do pedido para "${newStatus}"?`;
-                showConfirmModal('Confirmar Alteração de Status', message, async () => {
-                    try {
-                        // CORREÇÃO: Apontando para a coleção correta 'solicitacoes_compra'
-                        await updateDoc(getDocRef('solicitacoes_compra', purchaseId), { status: newStatus });
-                        logAction('PEDIDO_COMPRA_STATUS_ALTERADO', `Status do pedido de ${purchaseRequest.solicitanteName} alterado para ${newStatus}.`);
-                        showToast(`Status do pedido alterado para ${newStatus}.`, 'success');
-                    } catch (error) {
-                        console.error("Erro ao atualizar status do pedido:", error);
-                        showToast("Erro ao atualizar o status.", 'error');
+                    const message = `Deseja ${action === 'approve' ? 'aprovar' : 'rejeitar'} este pedido de compra?`;
+                    showConfirmModal(`Confirmar ${action === 'approve' ? 'Aprovação' : 'Rejeição'}`, message, async () => {
+                        try {
+                            await updateDoc(getDocRef('solicitacoes_compra', purchaseId), { 
+                                status: newStatus,
+                                aprovador: currentUser.name,
+                                dataAprovacao: serverTimestamp()
+                            });
+                            logAction('PEDIDO_COMPRA_APROVADO', `Pedido de ${purchaseRequest.solicitanteName} foi ${newStatus.toLowerCase()} por ${currentUser.name}.`);
+                            showToast(`Pedido ${newStatus.toLowerCase()} com sucesso.`, 'success');
+                        } catch (error) {
+                            console.error("Erro ao processar aprovação:", error);
+                            showToast("Erro ao processar a ação.", 'error');
+                        }
+                    });
+                }
+            });
+
+            //-- NOVO: Listeners para abrir o modal de detalhes --//
+            ['approvals-table-body', 'compras-table-body'].forEach(tbodyId => {
+                document.getElementById(tbodyId).addEventListener('click', (e) => {
+                    const row = e.target.closest('tr.request-row');
+                    // Garante que o clique não foi em um botão ou link dentro da linha
+                    if (!row || e.target.closest('button') || e.target.closest('a')) {
+                        return;
+                    }
+                    const requestId = row.dataset.requestId;
+                    if (requestId) {
+                        showPurchaseRequestDetails(requestId);
                     }
                 });
             });
-            // =================================================================
 
             document.getElementById('modal-item-filter').addEventListener('input', (e) => renderItemAccordionInModal(e.target.value));
             document.getElementById('modal-itens-accordion-container').addEventListener('click', (e) => {
@@ -1891,7 +2102,7 @@
                     tableHtml = `<table class="w-full text-sm text-left text-gray-500">
                                     <thead class="text-xs text-gray-700 uppercase bg-gray-50">
                                         <tr>
-                                            <th class="px-6 py-3">Professor</th>
+                                            <th class="px-6 py-3">Colaborador</th>
                                             <th class="px-6 py-3">Item</th>
                                             <th class="px-6 py-3">Qtd. Pendente</th>
                                             <th class="px-6 py-3">Data da Retirada</th>
@@ -1948,8 +2159,8 @@
                                     <tbody>`;
 
                     lowStockItens.forEach(item => {
-                          const categoryName = localCategories.find(c => c.id === item.categoryId)?.name || 'Sem Categoria';
-                          tableHtml += `<tr class="border-b">
+                        const categoryName = localCategories.find(c => c.id === item.categoryId)?.name || 'Sem Categoria';
+                        tableHtml += `<tr class="border-b">
                                             <td class="px-6 py-4 font-medium">${item.name}</td>
                                             <td class="px-6 py-4">${categoryName}</td>
                                             <td class="px-6 py-4 font-bold text-center">${item.quantity}</td>
