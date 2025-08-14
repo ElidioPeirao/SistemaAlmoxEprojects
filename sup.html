@@ -183,12 +183,21 @@
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
                 
-                document.getElementById('kpi-total-itens-card').addEventListener('click', () => showDetailsModal('Estoque Completo de Itens', renderAllItemsTable(rawData.itens, rawData.categories)));
+                document.getElementById('kpi-total-itens-card').addEventListener('click', () => showAllItemsModal());
                 document.getElementById('kpi-retiradas-pendentes-card').addEventListener('click', () => showDetailsModal('Retiradas Pendentes', renderPendingRetiradasTable(rawData.retiradas.filter(r => r.status === 'Pendente' || r.status === 'Devolvido Parcialmente'))));
                 document.getElementById('kpi-solicitacoes-compra-card').addEventListener('click', () => showPurchaseHistoryModal());
                 document.getElementById('kpi-total-professores-card').addEventListener('click', () => showDetailsModal('Colaboradores Cadastrados', renderAllProfessorsTable(rawData.professores)));
                 document.getElementById('close-details-modal-btn').addEventListener('click', () => document.getElementById('details-modal').classList.add('hidden'));
                 document.getElementById('download-inventory-btn').addEventListener('click', downloadInventory);
+
+                document.getElementById('details-modal-content').addEventListener('click', (e) => {
+                    if (e.target.classList.contains('professor-history-link')) {
+                        e.preventDefault();
+                        const professorId = e.target.dataset.professorId;
+                        const professorName = e.target.dataset.professorName;
+                        showProfessorWithdrawalHistory(professorId, professorName);
+                    }
+                });
 
             } catch (error) {
                 console.error("Falha ao inicializar o Firebase:", error);
@@ -280,7 +289,6 @@
                 tr.className = 'border-b hover:bg-gray-50 cursor-pointer request-row';
                 tr.dataset.requestId = req.id;
                 
-                //-- ALTERADO: Usa req.itemLink --//
                 const linkHtml = req.itemLink 
                     ? `<a href="${req.itemLink}" target="_blank" class="text-blue-500 hover:underline" onclick="event.stopPropagation()"><i class="fas fa-link"></i> Ver Link</a>` 
                     : 'N/A';
@@ -509,7 +517,6 @@
                 'Cancelado': 'bg-gray-200 text-gray-700'
             };
 
-            //-- ALTERADO: Usa request.itemLink --//
             const contentHtml = `
                 <div class="space-y-4 text-sm">
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -552,8 +559,58 @@
             showDetailsModal('Detalhes do Pedido de Compra', contentHtml);
         }
 
+        //-- NOVO: Função para abrir o modal de itens com filtros --//
+        function showAllItemsModal() {
+            let categoryOptions = rawData.categories
+                .sort((a, b) => a.name.localeCompare(b.name))
+                .map(cat => `<option value="${cat.id}">${cat.name}</option>`)
+                .join('');
+
+            const contentHtml = `
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-4">
+                    <input type="text" id="modal-filter-item-name" placeholder="Filtrar por nome do item..." class="p-2 border border-gray-300 rounded-md">
+                    <select id="modal-filter-item-category" class="p-2 border border-gray-300 rounded-md">
+                        <option value="">Todas as Categorias</option>
+                        ${categoryOptions}
+                    </select>
+                </div>
+                <div id="all-items-table-container" class="overflow-y-auto max-h-96">
+                    <!-- A tabela será renderizada aqui -->
+                </div>
+            `;
+            showDetailsModal('Estoque Completo de Itens', contentHtml);
+
+            document.getElementById('modal-filter-item-name').addEventListener('input', () => renderAllItemsTable(rawData.itens, rawData.categories));
+            document.getElementById('modal-filter-item-category').addEventListener('change', () => renderAllItemsTable(rawData.itens, rawData.categories));
+            
+            renderAllItemsTable(rawData.itens, rawData.categories);
+        }
+
+        //-- ALTERADO: renderAllItemsTable agora renderiza em um container e aplica filtros --//
         function renderAllItemsTable(itens, categories) {
-            if (!itens || itens.length === 0) return '<p class="text-center text-gray-500 py-8">Nenhum item cadastrado.</p>';
+            const container = document.getElementById('all-items-table-container');
+            const isInModal = !!container;
+
+            const nameFilterValue = document.getElementById('modal-filter-item-name')?.value.toLowerCase() || '';
+            const categoryFilterValue = document.getElementById('modal-filter-item-category')?.value || '';
+
+            let filteredItens = itens;
+
+            if (isInModal) {
+                if (nameFilterValue) {
+                    filteredItens = filteredItens.filter(item => item.name.toLowerCase().includes(nameFilterValue));
+                }
+                if (categoryFilterValue) {
+                    filteredItens = filteredItens.filter(item => item.categoryId === categoryFilterValue);
+                }
+            }
+
+            if (!filteredItens || filteredItens.length === 0) {
+                const placeholder = '<p class="text-center text-gray-500 py-8">Nenhum item encontrado.</p>';
+                if (isInModal) container.innerHTML = placeholder;
+                return placeholder;
+            }
+            
             const categoryMap = categories.reduce((map, cat) => ({...map, [cat.id]: cat.name}), {});
             let tableHtml = `<table class="w-full text-sm">
                 <thead class="text-xs text-gray-700 uppercase bg-gray-100">
@@ -565,7 +622,7 @@
                     </tr>
                 </thead><tbody>`;
             
-            itens.sort((a, b) => a.name.localeCompare(b.name)).forEach(item => {
+            filteredItens.sort((a, b) => a.name.localeCompare(b.name)).forEach(item => {
                 const categoryName = categoryMap[item.categoryId] || 'Sem Categoria';
                 tableHtml += `<tr class="border-b">
                     <td class="px-4 py-3 font-medium">${item.name}</td>
@@ -575,6 +632,10 @@
                 </tr>`;
             });
             tableHtml += `</tbody></table>`;
+
+            if (isInModal) {
+                container.innerHTML = tableHtml;
+            }
             return tableHtml;
         }
 
@@ -640,8 +701,9 @@
 
             professores.sort((a, b) => a.name.localeCompare(b.name)).forEach(prof => {
                 const supervisorBadge = prof.isSupervisor ? '<span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-purple-100 text-purple-800">Sim</span>' : 'Não';
+                const nameContent = `<a href="#" class="professor-history-link text-blue-600 hover:underline" data-professor-id="${prof.id}" data-professor-name="${prof.name}">${prof.name}</a>`;
                 tableHtml += `<tr class="border-b">
-                    <td class="px-4 py-3 font-medium">${prof.name}</td>
+                    <td class="px-4 py-3 font-medium">${nameContent}</td>
                     <td class="px-4 py-3 text-gray-600">${prof.matricula}</td>
                     <td class="px-4 py-3 text-center">${supervisorBadge}</td>
                 </tr>`;
@@ -650,6 +712,12 @@
             return tableHtml;
         }
         
+        function showProfessorWithdrawalHistory(professorId, professorName) {
+            const professorRetiradas = rawData.retiradas.filter(r => r.professorId === professorId);
+            const content = renderPendingRetiradasTable(professorRetiradas);
+            showDetailsModal(`Histórico de Retiradas: ${professorName}`, content);
+        }
+
         function downloadInventory() {
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF();
