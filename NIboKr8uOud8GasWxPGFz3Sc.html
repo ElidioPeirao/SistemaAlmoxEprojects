@@ -685,7 +685,6 @@
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
         import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc, writeBatch, query, where, serverTimestamp, getDocs, increment, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyCiSA3hcGqJ4BKtkxNrS9DBrEP4NcpxAVo",
@@ -698,7 +697,7 @@
         };
         const appId = 'almoxarifado-app-global';
 
-        let app, db, auth;
+        let app, db;
         let unsubscribeProfessores, unsubscribeItens, unsubscribeRetiradas, unsubscribeCategories, unsubscribeAuditLog, unsubscribeOperators, unsubscribeSolicitacoes, unsubscribePurchaseRequests;
         
         let localProfessores = [], localItens = [], localCategories = [], allRetiradas = [], auditLog = [], localOperators = [], localSolicitacoes = [], localPurchaseRequests = [];
@@ -810,8 +809,8 @@
             approvalsTabBtn.classList.toggle('hidden', !isSupervisor);
             document.getElementById('clear-history-btn').classList.toggle('hidden', !isAdmin);
             
-            supervisorCheckboxContainer.classList.toggle('hidden', !isAdmin);
-            editSupervisorCheckboxContainer.classList.toggle('hidden', !isAdmin);
+            if(supervisorCheckboxContainer) supervisorCheckboxContainer.classList.toggle('hidden', !isAdmin);
+            if(editSupervisorCheckboxContainer) editSupervisorCheckboxContainer.classList.toggle('hidden', !isAdmin);
 
             if (!isAdmin && document.querySelector('.tab-button[data-tab="admin"].active')) {
                 document.querySelector('.tab-button[data-tab="dashboard"]').click();
@@ -1037,7 +1036,6 @@
                     return dateMatch && professorMatch && itemMatch;
                 });
             } else {
-                //-- ALTERADO: Por padrão, mostra todas as retiradas, não apenas as de hoje/pendentes --//
                 filteredRetiradas = allRetiradas;
             }
 
@@ -1487,7 +1485,6 @@
             try {
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
-                auth = getAuth(app);
             } catch (error) {
                 console.error("Firebase init failed:", error);
                 document.body.innerHTML = `<div class="p-8 m-4 text-center text-red-800 bg-red-100 rounded-lg"><h2 class="font-bold text-xl mb-2">Erro na Inicialização</h2><p>Não foi possível conectar ao Firebase. Verifique a configuração e a conexão com a internet.</p><p class="mt-4 text-xs text-gray-600">Código: ${error.code}</p></div>`;
@@ -1760,23 +1757,32 @@
                 }
             });
             
-            document.getElementById('main-login-btn').addEventListener('click', () => {
-                openModal(document.getElementById('login-modal'));
+            document.getElementById('main-login-btn').addEventListener('click', async () => {
+                try {
+                    const operatorsSnapshot = await getDocs(getCollectionRef('operators'));
+                    localOperators = operatorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                    const professorsSnapshot = await getDocs(getCollectionRef('professores'));
+                    localProfessores = professorsSnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+                    openModal(document.getElementById('login-modal'));
+                } catch (error) {
+                    console.error("Erro ao carregar dados para login:", error);
+                    showToast("Falha ao carregar dados de login. Tente novamente.", 'error');
+                }
             });
             
             document.getElementById('cancel-login-btn').addEventListener('click', () => closeModal(document.getElementById('login-modal')));
             document.getElementById('logout-btn').addEventListener('click', () => {
-                signOut(auth).then(() => {
-                    currentUser = { role: 'viewer', name: 'Nenhum', permissions: {}, isSupervisor: false };
-                    detachListeners();
-                    localProfessores = []; localItens = []; localCategories = []; allRetiradas = []; auditLog = []; localOperators = []; localSolicitacoes = []; localPurchaseRequests = [];
-                    renderProfessores([]); renderItens([]); renderCategories([]); renderRetiradas(); renderAuditLog([]); renderOperators([]); renderSolicitacoes(); renderPurchaseRequests(); renderApprovals(); renderPurchaseHistory();
-                    updateSolicitacoesBadge();
-                    updatePurchaseRequestsBadge();
-                    updateApprovalsBadge();
-                    updateUIAccess();
-                    showToast('Você saiu do sistema.', 'info');
-                });
+                currentUser = { role: 'viewer', name: 'Nenhum', permissions: {}, isSupervisor: false };
+                detachListeners();
+                localProfessores = []; localItens = []; localCategories = []; allRetiradas = []; auditLog = []; localOperators = []; localSolicitacoes = []; localPurchaseRequests = [];
+                renderProfessores([]); renderItens([]); renderCategories([]); renderRetiradas(); renderAuditLog([]); renderOperators([]); renderSolicitacoes(); renderPurchaseRequests(); renderApprovals(); renderPurchaseHistory();
+                updateSolicitacoesBadge();
+                updatePurchaseRequestsBadge();
+                updateApprovalsBadge();
+                updateUIAccess();
+                showToast('Você saiu do sistema.', 'info');
             });
 
             document.getElementById('login-form').addEventListener('submit', async (e) => {
@@ -1784,7 +1790,6 @@
                 const name = document.getElementById('login-name').value.trim();
                 const registration = document.getElementById('login-registration').value.trim();
 
-                //-- ALTERADO: Lógica de login revertida para o método original --//
                 if (name === 'admin' && registration === 'admin') {
                     currentUser = { role: 'admin', name: 'Admin', permissions: { canManageItems: true, canManageProfessors: true, canGenerateReports: true, canManageRetiradas: true }, isSupervisor: true };
                     showToast('Bem-vindo, Administrador!', 'success');
