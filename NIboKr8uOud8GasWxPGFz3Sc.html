@@ -684,7 +684,8 @@
 
     <script type="module">
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc, writeBatch, query, where, serverTimestamp, getDocs, increment } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getFirestore, collection, doc, addDoc, onSnapshot, updateDoc, deleteDoc, writeBatch, query, where, serverTimestamp, getDocs, increment, getDoc } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInWithEmailAndPassword, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         
         const firebaseConfig = {
             apiKey: "AIzaSyCiSA3hcGqJ4BKtkxNrS9DBrEP4NcpxAVo",
@@ -697,7 +698,7 @@
         };
         const appId = 'almoxarifado-app-global';
 
-        let app, db;
+        let app, db, auth;
         let unsubscribeProfessores, unsubscribeItens, unsubscribeRetiradas, unsubscribeCategories, unsubscribeAuditLog, unsubscribeOperators, unsubscribeSolicitacoes, unsubscribePurchaseRequests;
         
         let localProfessores = [], localItens = [], localCategories = [], allRetiradas = [], auditLog = [], localOperators = [], localSolicitacoes = [], localPurchaseRequests = [];
@@ -1036,12 +1037,8 @@
                     return dateMatch && professorMatch && itemMatch;
                 });
             } else {
-                const today = new Date().toISOString().slice(0, 10);
-                filteredRetiradas = allRetiradas.filter(r => {
-                    const isPending = r.status === 'Pendente' || r.status === 'Devolvido Parcialmente';
-                    const isToday = r.dataRetirada === today;
-                    return isToday || isPending;
-                });
+                //-- ALTERADO: Por padrão, mostra todas as retiradas, não apenas as de hoje/pendentes --//
+                filteredRetiradas = allRetiradas;
             }
 
             container.innerHTML = '';
@@ -1490,6 +1487,7 @@
             try {
                 app = initializeApp(firebaseConfig);
                 db = getFirestore(app);
+                auth = getAuth(app);
             } catch (error) {
                 console.error("Firebase init failed:", error);
                 document.body.innerHTML = `<div class="p-8 m-4 text-center text-red-800 bg-red-100 rounded-lg"><h2 class="font-bold text-xl mb-2">Erro na Inicialização</h2><p>Não foi possível conectar ao Firebase. Verifique a configuração e a conexão com a internet.</p><p class="mt-4 text-xs text-gray-600">Código: ${error.code}</p></div>`;
@@ -1688,7 +1686,6 @@
             docPdf.save(`relatorio_almoxarifado_${new Date().toISOString().slice(0,10)}.pdf`);
         }
         
-        //-- ALTERADO: Passa a lista de solicitações como parâmetro --//
         function showPurchaseRequestDetails(requestId, purchaseRequests) {
             const request = purchaseRequests.find(r => r.id === requestId);
             if (!request) {
@@ -1764,43 +1761,37 @@
             });
             
             document.getElementById('main-login-btn').addEventListener('click', () => {
-                onSnapshot(getCollectionRef('operators'), snap => {
-                    localOperators = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    onSnapshot(getCollectionRef('professores'), profSnap => {
-                        localProfessores = profSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                        openModal(document.getElementById('login-modal'));
-                    });
-                }, err => {
-                    console.error("Could not fetch operators for login:", err);
-                    showToast("Erro ao carregar dados de login.", "error");
-                });
+                openModal(document.getElementById('login-modal'));
             });
             
             document.getElementById('cancel-login-btn').addEventListener('click', () => closeModal(document.getElementById('login-modal')));
             document.getElementById('logout-btn').addEventListener('click', () => {
-                currentUser = { role: 'viewer', name: 'Nenhum', permissions: {}, isSupervisor: false };
-                detachListeners();
-                localProfessores = []; localItens = []; localCategories = []; allRetiradas = []; auditLog = []; localOperators = []; localSolicitacoes = []; localPurchaseRequests = [];
-                renderProfessores([]); renderItens([]); renderCategories([]); renderRetiradas(); renderAuditLog([]); renderOperators([]); renderSolicitacoes(); renderPurchaseRequests(); renderApprovals(); renderPurchaseHistory();
-                updateSolicitacoesBadge();
-                updatePurchaseRequestsBadge();
-                updateApprovalsBadge();
-                updateUIAccess();
-                showToast('Você saiu do sistema.', 'info');
+                signOut(auth).then(() => {
+                    currentUser = { role: 'viewer', name: 'Nenhum', permissions: {}, isSupervisor: false };
+                    detachListeners();
+                    localProfessores = []; localItens = []; localCategories = []; allRetiradas = []; auditLog = []; localOperators = []; localSolicitacoes = []; localPurchaseRequests = [];
+                    renderProfessores([]); renderItens([]); renderCategories([]); renderRetiradas(); renderAuditLog([]); renderOperators([]); renderSolicitacoes(); renderPurchaseRequests(); renderApprovals(); renderPurchaseHistory();
+                    updateSolicitacoesBadge();
+                    updatePurchaseRequestsBadge();
+                    updateApprovalsBadge();
+                    updateUIAccess();
+                    showToast('Você saiu do sistema.', 'info');
+                });
             });
-            document.getElementById('login-form').addEventListener('submit', (e) => {
+
+            document.getElementById('login-form').addEventListener('submit', async (e) => {
                 e.preventDefault();
                 const name = document.getElementById('login-name').value.trim();
                 const registration = document.getElementById('login-registration').value.trim();
-                
-                const professorAsSupervisor = localProfessores.find(p => p.matricula === registration && p.isSupervisor);
 
-                if (name === 'Elidio' && registration === '1812') {
+                //-- ALTERADO: Lógica de login revertida para o método original --//
+                if (name === 'admin' && registration === 'admin') {
                     currentUser = { role: 'admin', name: 'Admin', permissions: { canManageItems: true, canManageProfessors: true, canGenerateReports: true, canManageRetiradas: true }, isSupervisor: true };
                     showToast('Bem-vindo, Administrador!', 'success');
                 } else {
                     const operator = localOperators.find(op => op.name === name && op.registration === registration);
                     if (operator) {
+                        const professorAsSupervisor = localProfessores.find(p => p.matricula === registration && p.isSupervisor);
                         currentUser = { role: 'operator', name: operator.name, permissions: operator.permissions || {}, isSupervisor: !!(professorAsSupervisor) };
                         showToast(`Bem-vindo, ${operator.name}!`, 'success');
                     } else {
@@ -1808,6 +1799,7 @@
                         return;
                     }
                 }
+                
                 attachListeners();
                 updateUIAccess();
                 closeModal(document.getElementById('login-modal'));
@@ -2108,7 +2100,6 @@
                     }
                     const requestId = row.dataset.requestId;
                     if (requestId) {
-                        //-- ALTERADO: Passa a lista de solicitações como parâmetro --//
                         showPurchaseRequestDetails(requestId, localPurchaseRequests);
                     }
                 });
@@ -2218,10 +2209,10 @@
                     lowStockItens.forEach(item => {
                         const categoryName = localCategories.find(c => c.id === item.categoryId)?.name || 'Sem Categoria';
                         tableHtml += `<tr class="border-b">
-                                            <td class="px-6 py-4 font-medium">${item.name}</td>
-                                            <td class="px-6 py-4">${categoryName}</td>
-                                            <td class="px-6 py-4 font-bold text-center">${item.quantity}</td>
-                                            <td class="px-6 py-4 text-center">${item.totalQuantity}</td>
+                                            <td class="px-4 py-4 font-medium">${item.name}</td>
+                                            <td class="px-4 py-4">${categoryName}</td>
+                                            <td class="px-4 py-4 font-bold text-center">${item.quantity}</td>
+                                            <td class="px-4 py-4 text-center">${item.totalQuantity}</td>
                                         </tr>`;
                     });
 
