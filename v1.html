@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solicitação de Material ao Almoxarifado</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .form-section, .tabs-container { display: none; }
+        .form-section.active, .tabs-container.active { display: block; }
+        .matricula-feedback {
+            transition: opacity 0.3s;
+        }
+        .tab-button.active {
+            border-bottom-color: #3b82f6;
+            color: #3b82f6;
+            background-color: #eff6ff;
+        }
+    </style>
+</head>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen p-4">
+
+    <div class="container mx-auto max-w-4xl w-full">
+        <!-- Main Container -->
+        <div class="bg-white p-6 sm:p-8 rounded-lg shadow-lg">
+            <h1 class="text-2xl md:text-3xl font-bold mb-6 text-gray-700 text-center">
+                <i class="fas fa-paper-plane text-blue-500 mr-3"></i>Portal de Solicitação
+            </h1>
+            
+            <!-- User Identification Section -->
+            <div id="identification-section">
+                <label for="solicitante-matricula" class="block text-sm font-medium text-gray-700 mb-1">Digite sua Matrícula para Começar</label>
+                <div class="flex items-center gap-2">
+                    <div class="relative flex-grow">
+                        <input type="text" id="solicitante-matricula" class="w-full p-3 border border-gray-300 rounded-md shadow-sm" placeholder="Sua matrícula aqui..." required>
+                        <span id="matricula-feedback-icon" class="matricula-feedback absolute right-3 top-1/2 -translate-y-1/2 text-lg opacity-0"></span>
+                    </div>
+                    <button type="button" id="acessar-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-5 rounded-lg">Acessar</button>
+                    <button type="button" id="trocar-usuario-btn" class="hidden bg-gray-500 hover:bg-gray-600 text-white font-bold py-3 px-5 rounded-lg">Trocar</button>
+                </div>
+                <div id="professor-info" class="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md hidden">
+                    <span class="font-medium text-blue-800">Professor:</span>
+                    <span id="professor-name-display" class="font-bold text-blue-900"></span>
+                </div>
+                <p id="matricula-error" class="text-red-600 text-sm font-semibold mt-1 hidden">Matrícula não encontrada.</p>
+            </div>
+
+            <!-- Tabs Navigation -->
+            <div class="tabs-container mt-8">
+                <div class="border-b border-gray-200">
+                    <nav class="flex -mb-px" aria-label="Tabs">
+                        <button data-tab="solicitacao" class="tab-button active w-1/2 text-center py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600">
+                           <i class="fas fa-edit mr-2"></i>Fazer Solicitação
+                        </button>
+                        <button data-tab="kits" class="tab-button w-1/2 text-center py-4 px-1 border-b-2 font-medium text-sm text-gray-500 hover:text-blue-600">
+                           <i class="fas fa-box-archive mr-2"></i>Meus Kits
+                        </button>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Tab Content -->
+            <div id="tab-content-solicitacao" class="form-section">
+                <form id="form-solicitacao" class="mt-6">
+                     <div class="mb-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="reservar-checkbox" class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                            <span class="text-sm font-medium text-gray-700">Agendar Retirada</span>
+                        </label>
+                     </div>
+                     <div id="date-container" class="mb-6 hidden">
+                        <label for="retirada-date" class="block text-sm font-medium text-gray-700 mb-1">Data da Retirada</label>
+                        <input type="date" id="retirada-date" class="w-full p-3 border border-gray-300 rounded-md shadow-sm">
+                    </div>
+
+                    <h3 class="font-semibold text-lg mb-3 text-gray-700">Itens Desejados</h3>
+                    <div id="itens-list" class="space-y-4"></div>
+                    <button type="button" id="add-item-btn" class="mt-4 text-sm bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-4 rounded-lg">
+                        <i class="fas fa-plus mr-2"></i>Adicionar Outro Item
+                    </button>
+                    <div class="mt-8">
+                        <label for="observacao" class="block text-sm font-medium text-gray-700 mb-1">Observações (Opcional)</label>
+                        <textarea id="observacao" rows="3" class="w-full p-3 border border-gray-300 rounded-md shadow-sm" placeholder="Ex: Material para a aula de amanhã, sala 302..."></textarea>
+                    </div>
+                    <div class="mt-8 text-center">
+                        <button type="submit" id="submit-btn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-8 rounded-lg shadow-lg transition-transform transform hover:scale-105 w-full md:w-auto">
+                            <i class="fas fa-hand-paper mr-2"></i>Solicitar
+                        </button>
+                    </div>
+                </form>
+            </div>
+            
+            <div id="tab-content-kits" class="form-section">
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mt-6">
+                    <!-- Saved Kits -->
+                    <div>
+                        <h3 class="font-semibold text-lg mb-3 text-gray-700">Kits Salvos</h3>
+                        <div id="kits-list" class="space-y-3 max-h-96 overflow-y-auto pr-2"></div>
+                        <p id="kits-placeholder" class="text-center py-4 text-gray-500">Nenhum kit salvo.</p>
+                    </div>
+                    <!-- Create Kit -->
+                    <div>
+                        <h3 class="font-semibold text-lg mb-3 text-gray-700">Criar Novo Kit</h3>
+                        <form id="create-kit-form" class="bg-gray-50 p-4 rounded-lg">
+                             <div class="mb-4">
+                                <label for="kit-name" class="block text-sm font-medium text-gray-700 mb-1">Nome do Kit</label>
+                                <input type="text" id="kit-name" class="w-full p-2 border border-gray-300 rounded-md" placeholder="Ex: Kit Aula de Artes" required>
+                             </div>
+                             <label class="block text-sm font-medium text-gray-700 mb-1">Itens do Kit</label>
+                             <div id="kit-itens-list" class="space-y-3"></div>
+                             <button type="button" id="add-kit-item-btn" class="mt-2 text-xs bg-gray-200 p-2 rounded"><i class="fas fa-plus mr-1"></i> Adicionar Item</button>
+                             <button type="submit" class="mt-6 w-full bg-green-600 hover:bg-green-700 text-white font-bold py-2 rounded-lg">Salvar Kit</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- History Section -->
+        <div id="history-section" class="form-section mt-8 bg-white p-8 rounded-lg shadow-lg">
+            <h2 class="text-xl font-bold mb-4 text-gray-600">Suas Últimas 5 Solicitações</h2>
+            <div id="history-list" class="space-y-3"></div>
+            <p id="history-placeholder" class="text-center py-4 text-gray-500">Nenhuma solicitação encontrada.</p>
+        </div>
+    </div>
+    
+    <!-- Success Modal -->
+    <div id="success-modal" class="fixed inset-0 bg-black bg-opacity-60 flex justify-center items-center p-4 z-50 hidden">
+        <div class="bg-white rounded-lg shadow-2xl p-8 w-full max-w-md text-center">
+            <div class="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-green-100 mb-5">
+                <i class="fas fa-check text-4xl text-green-600"></i>
+            </div>
+            <h3 class="text-2xl font-bold text-gray-800">Operação Realizada!</h3>
+            <p id="success-message" class="my-4 text-gray-600"></p>
+            <button id="success-ok-btn" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-6 rounded-lg">OK</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getFirestore, collection, addDoc, getDocs, deleteDoc, doc, query, where, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        
+        const firebaseConfig = {
+            apiKey: "AIzaSyCiSA3hcGqJ4BKtkxNrS9DBrEP4NcpxAVo",
+            authDomain: "almoxeprojects.firebaseapp.com",
+            projectId: "almoxeprojects",
+            storageBucket: "almoxeprojects.appspot.com",
+            messagingSenderId: "933670924253",
+            appId: "1:933670924253:web:64f137671adeab3f201034",
+            measurementId: "G-WDEKYB0Y20"
+        };
+        const appId = 'almoxarifado-app-global';
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+        const getCollectionRef = (name) => collection(db, 'almoxarifado', appId, name);
+
+        const itemData = new Map();
+        const professorData = new Map();
+        let allPendingSolicitacoes = [];
+        let allActiveRetiradas = [];
+
+        let currentProfessor = null;
+
+        const matriculaInput = document.getElementById('solicitante-matricula');
+        const form = document.getElementById('form-solicitacao');
+        
+        const formContent = document.getElementById('tab-content-solicitacao');
+        const kitsContent = document.getElementById('tab-content-kits');
+        const tabsContainer = document.querySelector('.tabs-container');
+        const historySection = document.getElementById('history-section');
+        const professorInfoDiv = document.getElementById('professor-info');
+        const professorNameDisplay = document.getElementById('professor-name-display');
+        const matriculaError = document.getElementById('matricula-error');
+        const matriculaFeedbackIcon = document.getElementById('matricula-feedback-icon');
+        const acessarBtn = document.getElementById('acessar-btn');
+        const trocarUsuarioBtn = document.getElementById('trocar-usuario-btn');
+        const retiradaDateInput = document.getElementById('retirada-date');
+        const reservarCheckbox = document.getElementById('reservar-checkbox');
+        const dateContainer = document.getElementById('date-container');
+        const submitBtn = document.getElementById('submit-btn');
+
+        async function loadInitialData() {
+            professorData.clear();
+            itemData.clear();
+            
+            const profsSnapshot = await getDocs(getCollectionRef('professores'));
+            profsSnapshot.docs.forEach(doc => {
+                const prof = { id: doc.id, ...doc.data() };
+                professorData.set(prof.matricula, prof);
+            });
+
+            const itemsSnapshot = await getDocs(getCollectionRef('itens'));
+            itemsSnapshot.docs.forEach(doc => {
+                const item = { id: doc.id, ...doc.data() };
+                itemData.set(item.id, {name: item.name, totalQuantity: item.totalQuantity});
+            });
+
+            const solicitacoesSnapshot = await getDocs(query(getCollectionRef('solicitacoes'), where("status", "==", "Pendente")));
+            allPendingSolicitacoes = solicitacoesSnapshot.docs.map(doc => doc.data());
+            
+            const retiradasSnapshot = await getDocs(query(getCollectionRef('retiradas'), where("status", "in", ["Pendente", "Devolvido Parcialmente"])));
+            allActiveRetiradas = retiradasSnapshot.docs.map(doc => doc.data());
+        }
+
+        function getAvailableStockForDate(itemId, selectedDate) {
+            const totalStock = itemData.get(itemId)?.totalQuantity || 0;
+            let reservedOrOutStock = 0;
+            
+            // For today, also check items already taken out
+            if (selectedDate === new Date().toISOString().split('T')[0]) {
+                 allActiveRetiradas.forEach(retirada => {
+                    retirada.itens.forEach(item => {
+                        if (item.itemId === itemId) {
+                            reservedOrOutStock += (item.quantidade - (item.quantidadeDevolvida || 0));
+                        }
+                    });
+                });
+            }
+
+            // Always check for future reservations on the selected date
+            allPendingSolicitacoes.forEach(solicitacao => {
+                if (solicitacao.dataAgendamento === selectedDate) {
+                    solicitacao.itensSolicitados.forEach(item => {
+                        if (item.itemId === itemId) {
+                            reservedOrOutStock += item.quantidade;
+                        }
+                    });
+                }
+            });
+            
+            return totalStock - reservedOrOutStock;
+        }
+        
+        function handleStockValidation(rowDiv) {
+            const quantityInput = rowDiv.querySelector('.item-quantity-input');
+            const errorP = rowDiv.querySelector('.error-message');
+            const selectedDate = reservarCheckbox.checked ? retiradaDateInput.value : new Date().toISOString().split('T')[0];
+            
+            const itemId = rowDiv.dataset.itemId;
+            if (!itemId) return;
+
+            const availableStock = getAvailableStockForDate(itemId, selectedDate);
+            const requestedQuantity = parseInt(quantityInput.value, 10);
+
+            if (requestedQuantity > availableStock) {
+                errorP.textContent = `Disponível: ${availableStock}`;
+                errorP.classList.remove('hidden');
+                quantityInput.classList.add('border-red-500');
+            } else {
+                errorP.classList.add('hidden');
+                quantityInput.classList.remove('border-red-500');
+            }
+        }
+        
+        function createItemRow(containerId, itemToSelect = null) {
+            const container = document.getElementById(containerId);
+            const div = document.createElement('div');
+            div.className = 'item-row flex flex-col sm:flex-row items-stretch sm:items-center gap-2 p-3 bg-white rounded-lg border';
+            div.innerHTML = `
+                <div class="flex-grow relative">
+                    <input type="text" class="item-search-input w-full p-2 border border-gray-300 rounded-md" placeholder="Digite para buscar um item..." required>
+                    <div class="item-dropdown absolute z-10 w-full bg-white border mt-1 rounded-md shadow-lg hidden max-h-48 overflow-y-auto"></div>
+                    <p class="error-message text-red-600 text-xs font-semibold mt-1 ml-1 hidden"></p>
+                </div>
+                <div class="flex items-center gap-2">
+                    <input type="number" class="item-quantity-input w-24 p-2 border border-gray-300 rounded-md" placeholder="Qtd" min="1" required>
+                    <button type="button" class="remove-item-btn text-red-500 hover:text-red-700 text-lg p-2" title="Remover Item">
+                        <i class="fas fa-minus-circle"></i>
+                    </button>
+                </div>
+            `;
+            container.appendChild(div);
+
+            const searchInput = div.querySelector('.item-search-input');
+            const dropdown = div.querySelector('.item-dropdown');
+            const quantityInput = div.querySelector('.item-quantity-input');
+
+            const populateAndFilterDropdown = () => {
+                const selectedDate = reservarCheckbox.checked ? retiradaDateInput.value : new Date().toISOString().split('T')[0];
+                const filterText = searchInput.value.toLowerCase();
+                dropdown.innerHTML = '';
+
+                if (reservarCheckbox.checked && !selectedDate) {
+                    dropdown.innerHTML = '<div class="p-2 text-sm text-gray-500">Selecione uma data primeiro.</div>';
+                    return;
+                }
+
+                let hasResults = false;
+                itemData.forEach((item, itemId) => {
+                    if (item.name.toLowerCase().includes(filterText)) {
+                        const availableStock = getAvailableStockForDate(itemId, selectedDate);
+                        if (availableStock > 0) {
+                            hasResults = true;
+                            const optionDiv = document.createElement('div');
+                            optionDiv.className = 'p-2 hover:bg-blue-100 cursor-pointer text-sm';
+                            optionDiv.textContent = `${item.name} (Disponível: ${availableStock})`;
+                            optionDiv.dataset.id = itemId;
+                            optionDiv.dataset.name = item.name;
+
+                            optionDiv.addEventListener('mousedown', (e) => {
+                                e.preventDefault();
+                                searchInput.value = item.name;
+                                div.dataset.itemId = itemId;
+                                div.dataset.itemName = item.name;
+                                dropdown.classList.add('hidden');
+                                handleStockValidation(div);
+                            });
+                            dropdown.appendChild(optionDiv);
+                        }
+                    }
+                });
+                if(!hasResults && filterText) dropdown.innerHTML = '<div class="p-2 text-sm text-gray-500">Nenhum item encontrado.</div>';
+            };
+
+            searchInput.addEventListener('focus', () => {
+                populateAndFilterDropdown();
+                dropdown.classList.remove('hidden');
+            });
+            searchInput.addEventListener('input', populateAndFilterDropdown);
+            searchInput.addEventListener('blur', () => setTimeout(() => dropdown.classList.add('hidden'), 200));
+            quantityInput.addEventListener('input', () => handleStockValidation(div));
+
+            if (itemToSelect) {
+                searchInput.value = itemToSelect.itemName;
+                quantityInput.value = itemToSelect.quantidade;
+                div.dataset.itemId = itemToSelect.itemId;
+                div.dataset.itemName = itemToSelect.itemName;
+            }
+        }
+        
+        async function displayHistory(professorId) {
+            const historyList = document.getElementById('history-list');
+            const historyPlaceholder = document.getElementById('history-placeholder');
+            historyList.innerHTML = '';
+            
+            const q = query(getCollectionRef('solicitacoes'), where("solicitanteId", "==", professorId));
+            const querySnapshot = await getDocs(q);
+            
+            const allSolicitacoes = querySnapshot.docs.map(doc => doc.data());
+            allSolicitacoes.sort((a, b) => (b.timestamp?.toMillis() || 0) - (a.timestamp?.toMillis() || 0));
+
+            const latestSolicitacoes = allSolicitacoes.slice(0, 5);
+            historyPlaceholder.classList.toggle('hidden', latestSolicitacoes.length > 0);
+            
+            latestSolicitacoes.forEach(solicitacao => {
+                const statusClasses = { 'Pendente': 'bg-yellow-100 text-yellow-800', 'Concluída': 'bg-green-100 text-green-800', 'Rejeitada': 'bg-red-100 text-red-800' };
+                const statusClass = statusClasses[solicitacao.status] || 'bg-gray-100 text-gray-800';
+                
+                const div = document.createElement('div');
+                div.className = 'p-3 border rounded-lg';
+                div.innerHTML = `
+                    <div class="flex justify-between items-center">
+                        <span class="font-bold text-gray-700">${new Date(solicitacao.dataAgendamento + 'T00:00:00').toLocaleDateString('pt-BR')}</span>
+                        <span class="text-xs font-bold px-2 py-1 rounded-full ${statusClass}">${solicitacao.status}</span>
+                    </div>
+                    <div class="text-xs text-gray-600 mt-2">
+                        ${solicitacao.itensSolicitados.map(item => `<span>- ${item.quantidade}x ${item.itemName}</span>`).join('<br>')}
+                    </div>
+                `;
+                historyList.appendChild(div);
+            });
+        }
+        
+        function resetRequestForm() {
+            document.getElementById('observacao').value = '';
+            document.getElementById('itens-list').innerHTML = '';
+            createItemRow('itens-list');
+        }
+
+        function resetFullState() {
+            currentProfessor = null;
+            matriculaInput.value = '';
+            form.reset();
+            resetRequestForm();
+            tabsContainer.classList.remove('active');
+            formContent.classList.remove('active');
+            kitsContent.classList.remove('active');
+            historySection.classList.remove('active');
+            professorInfoDiv.classList.add('hidden');
+            matriculaError.classList.add('hidden');
+            matriculaFeedbackIcon.classList.add('opacity-0');
+            matriculaInput.disabled = false;
+            acessarBtn.classList.remove('hidden');
+            trocarUsuarioBtn.classList.add('hidden');
+            document.querySelector('.tab-button[data-tab="solicitacao"]').click();
+        }
+        
+        function showSuccessModal(message, callback) {
+            document.getElementById('success-message').textContent = message;
+            const modal = document.getElementById('success-modal');
+            modal.classList.remove('hidden');
+            const okBtn = document.getElementById('success-ok-btn');
+            
+            const newOkBtn = okBtn.cloneNode(true);
+            okBtn.parentNode.replaceChild(newOkBtn, okBtn);
+
+            newOkBtn.addEventListener('click', () => {
+                modal.classList.add('hidden');
+                if (callback) callback();
+            });
+        }
+        
+        async function renderKits() {
+            if (!currentProfessor) return;
+            const kitsList = document.getElementById('kits-list');
+            const kitsPlaceholder = document.getElementById('kits-placeholder');
+            kitsList.innerHTML = '';
+
+            const q = query(getCollectionRef('kits'), where("professorId", "==", currentProfessor.id));
+            const querySnapshot = await getDocs(q);
+            
+            kitsPlaceholder.classList.toggle('hidden', !querySnapshot.empty);
+            
+            querySnapshot.forEach(doc => {
+                const kit = { id: doc.id, ...doc.data() };
+                const div = document.createElement('div');
+                div.className = 'p-4 border rounded-lg bg-white';
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <p class="font-bold text-gray-800">${kit.kitName}</p>
+                            <div class="text-xs text-gray-500 mt-1">
+                                ${kit.items.map(i => `<span>${i.quantidade}x ${i.itemName}</span>`).join('<br>')}
+                            </div>
+                        </div>
+                        <button data-id="${kit.id}" class="delete-kit-btn text-red-400 hover:text-red-600 ml-2 text-sm"><i class="fas fa-trash"></i></button>
+                    </div>
+                    <button data-kit-items='${JSON.stringify(kit.items)}' class="use-kit-btn mt-3 w-full bg-blue-100 hover:bg-blue-200 text-blue-800 font-semibold py-1 px-3 rounded text-sm">Usar este Kit</button>
+                `;
+                kitsList.appendChild(div);
+            });
+        }
+
+        // --- Event Listeners ---
+        document.addEventListener('DOMContentLoaded', () => {
+            loadInitialData();
+            createItemRow('itens-list');
+            createItemRow('kit-itens-list');
+        });
+
+        acessarBtn.addEventListener('click', () => {
+            const matricula = matriculaInput.value.trim();
+            if (!matricula) {
+                matriculaError.textContent = 'Por favor, informe uma matrícula para acessar.';
+                matriculaError.classList.remove('hidden');
+                matriculaFeedbackIcon.className = 'matricula-feedback absolute right-3 top-1/2 -translate-y-1/2 text-lg opacity-100 fas fa-times-circle text-red-500';
+                return;
+            }
+
+            const professor = professorData.get(matricula);
+
+            if (professor) {
+                currentProfessor = professor;
+                professorNameDisplay.textContent = professor.name;
+                professorInfoDiv.classList.remove('hidden');
+                tabsContainer.classList.add('active');
+                formContent.classList.add('active');
+                historySection.classList.add('active');
+                matriculaError.classList.add('hidden');
+                matriculaFeedbackIcon.className = 'matricula-feedback absolute right-3 top-1/2 -translate-y-1/2 text-lg opacity-100 fas fa-check-circle text-green-500';
+                
+                matriculaInput.disabled = true;
+                acessarBtn.classList.add('hidden');
+                trocarUsuarioBtn.classList.remove('hidden');
+
+                displayHistory(professor.id);
+                renderKits();
+            } else {
+                currentProfessor = null;
+                tabsContainer.classList.remove('active');
+                formContent.classList.remove('active');
+                kitsContent.classList.remove('active');
+                historySection.classList.remove('active');
+                professorInfoDiv.classList.add('hidden');
+                matriculaError.textContent = 'Matrícula não encontrada.';
+                matriculaError.classList.remove('hidden');
+                matriculaFeedbackIcon.className = 'matricula-feedback absolute right-3 top-1/2 -translate-y-1/2 text-lg opacity-100 fas fa-times-circle text-red-500';
+            }
+        });
+
+        trocarUsuarioBtn.addEventListener('click', resetFullState);
+        
+        document.querySelectorAll('.tab-button').forEach(button => {
+            button.addEventListener('click', () => {
+                document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+                button.classList.add('active');
+                
+                const tab = button.dataset.tab;
+                document.querySelectorAll('.form-section').forEach(sec => sec.classList.remove('active'));
+                document.getElementById(`tab-content-${tab}`).classList.add('active');
+            });
+        });
+        
+        reservarCheckbox.addEventListener('change', () => {
+            const isChecked = reservarCheckbox.checked;
+            dateContainer.classList.toggle('hidden', !isChecked);
+            if (isChecked) {
+                submitBtn.innerHTML = '<i class="fas fa-calendar-check mr-2"></i>Reservar Itens';
+                retiradaDateInput.required = true;
+                 const tomorrow = new Date();
+                tomorrow.setDate(tomorrow.getDate() + 1);
+                retiradaDateInput.value = tomorrow.toISOString().split('T')[0];
+                retiradaDateInput.setAttribute('min', tomorrow.toISOString().split('T')[0]);
+            } else {
+                submitBtn.innerHTML = '<i class="fas fa-hand-paper mr-2"></i>Solicitar';
+                retiradaDateInput.required = false;
+                retiradaDateInput.value = '';
+            }
+            document.getElementById('itens-list').innerHTML = '';
+            createItemRow('itens-list');
+        });
+
+        retiradaDateInput.addEventListener('change', () => {
+             document.getElementById('itens-list').innerHTML = '';
+             createItemRow('itens-list');
+        });
+
+        document.getElementById('add-item-btn').addEventListener('click', () => createItemRow('itens-list'));
+        document.getElementById('add-kit-item-btn').addEventListener('click', () => createItemRow('kit-itens-list'));
+        
+        document.getElementById('itens-list').addEventListener('click', e => {
+            const removeBtn = e.target.closest('.remove-item-btn');
+            if (removeBtn && document.getElementById('itens-list').children.length > 1) {
+                removeBtn.closest('.item-row').remove();
+            }
+        });
+        document.getElementById('kit-itens-list').addEventListener('click', e => {
+            const removeBtn = e.target.closest('.remove-item-btn');
+            if (removeBtn && document.getElementById('kit-itens-list').children.length > 1) {
+                removeBtn.closest('.item-row').remove();
+            }
+        });
+
+        form.addEventListener('submit', async e => {
+            e.preventDefault();
+            if (!currentProfessor) {
+                alert('Sessão encerrada. Por favor, acesse com sua matrícula novamente.');
+                return;
+            }
+            
+            let dataAgendamento;
+            if (reservarCheckbox.checked) {
+                dataAgendamento = retiradaDateInput.value;
+                if (!dataAgendamento) {
+                    alert('Por favor, selecione uma data para a reserva.');
+                    return;
+                }
+            } else {
+                dataAgendamento = new Date().toISOString().split('T')[0];
+            }
+
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin mr-2"></i>Enviando...';
+
+            const itensSolicitados = [];
+            let formIsValid = true, errorMessage = '';
+            
+            for (const row of document.querySelectorAll('#itens-list .item-row')) {
+                handleStockValidation(row);
+                if (!row.querySelector('.error-message').classList.contains('hidden')) { formIsValid = false; errorMessage = 'Corrija as quantidades (estoque excedido).'; break; }
+                
+                const itemId = row.dataset.itemId;
+                const itemName = row.dataset.itemName;
+                const quantity = row.querySelector('.item-quantity-input').value;
+
+                if (itemId && itemName && quantity > 0) {
+                    itensSolicitados.push({ itemId, itemName, quantidade: Number(quantity) });
+                } else if(row.querySelector('.item-search-input').value || quantity) { 
+                    formIsValid = false; errorMessage = 'Verifique se todos os itens e quantidades são válidos.'; break; 
+                }
+            }
+
+            if (!formIsValid || itensSolicitados.length === 0) {
+                alert(errorMessage || 'A solicitação está inválida ou vazia.');
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = reservarCheckbox.checked ? '<i class="fas fa-calendar-check mr-2"></i>Reservar Itens' : '<i class="fas fa-hand-paper mr-2"></i>Solicitar';
+                return;
+            }
+
+            try {
+                await addDoc(getCollectionRef('solicitacoes'), {
+                    solicitanteId: currentProfessor.id,
+                    solicitanteName: currentProfessor.name,
+                    dataAgendamento,
+                    itensSolicitados,
+                    observacao: document.getElementById('observacao').value.trim(),
+                    status: 'Pendente',
+                    timestamp: serverTimestamp()
+                });
+                showSuccessModal('Sua solicitação foi enviada com sucesso!', async () => {
+                    await loadInitialData();
+                    resetRequestForm();
+                    displayHistory(currentProfessor.id);
+                });
+            } catch (error) {
+                console.error("Erro ao enviar solicitação:", error);
+                alert('Houve um erro ao enviar sua solicitação.');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = reservarCheckbox.checked ? '<i class="fas fa-calendar-check mr-2"></i>Reservar Itens' : '<i class="fas fa-hand-paper mr-2"></i>Solicitar';
+            }
+        });
+
+        document.getElementById('create-kit-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const kitName = document.getElementById('kit-name').value.trim();
+            if (!kitName) { alert('Por favor, dê um nome ao seu kit.'); return; }
+
+            const items = [];
+            let formIsValid = true;
+
+            for (const row of document.querySelectorAll('#kit-itens-list .item-row')) {
+                const itemId = row.dataset.itemId;
+                const itemName = row.dataset.itemName;
+                const quantity = row.querySelector('.item-quantity-input').value;
+
+                if (itemId && itemName && quantity > 0) {
+                    items.push({ itemId, itemName, quantidade: Number(quantity) });
+                } else if(row.querySelector('.item-search-input').value || quantity) { 
+                    formIsValid = false; 
+                }
+            }
+            
+            if (!formIsValid || items.length === 0) {
+                alert('Verifique se todos os itens e quantidades do kit são válidos.'); return;
+            }
+
+            try {
+                await addDoc(getCollectionRef('kits'), { professorId: currentProfessor.id, kitName, items });
+                e.target.reset();
+                document.getElementById('kit-itens-list').innerHTML = '';
+                createItemRow('kit-itens-list');
+                renderKits();
+                showSuccessModal('Seu kit foi salvo com sucesso!');
+            } catch (err) {
+                console.error("Erro ao salvar kit:", err);
+                alert('Não foi possível salvar o kit.');
+            }
+        });
+
+        document.getElementById('kits-list').addEventListener('click', (e) => {
+            const useBtn = e.target.closest('.use-kit-btn');
+            const deleteBtn = e.target.closest('.delete-kit-btn');
+
+            if (useBtn) {
+                const items = JSON.parse(useBtn.dataset.kitItems);
+                const itemListContainer = document.getElementById('itens-list');
+                itemListContainer.innerHTML = '';
+                items.forEach(item => createItemRow('itens-list', item));
+                document.querySelector('.tab-button[data-tab="solicitacao"]').click();
+            }
+
+            if (deleteBtn) {
+                if (confirm('Tem certeza que deseja excluir este kit?')) {
+                    const kitId = deleteBtn.dataset.id;
+                    deleteDoc(doc(db, 'almoxarifado', appId, 'kits', kitId)).then(() => {
+                        renderKits();
+                        alert('Kit excluído com sucesso.');
+                    }).catch(err => console.error("Erro ao excluir kit:", err));
+                }
+            }
+        });
+
+        document.getElementById('success-ok-btn').addEventListener('click', () => {
+            document.getElementById('success-modal').classList.add('hidden');
+        });
+
+    </script>
+</body>
+</html>
